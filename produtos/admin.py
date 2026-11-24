@@ -1,0 +1,21 @@
+from django.contrib import admin
+
+from core.admin_site import erp_admin_site
+from .models import Produto
+
+
+@admin.register(Produto, site=erp_admin_site)
+class ProdutoAdmin(admin.ModelAdmin):
+    list_display = (
+        "nome",
+        "sku",
+        "preco",
+        "eh_servico",
+        "categoria_estetica",
+        "duracao_minutos",
+        "quantidade_estoque",
+        "ativo",
+        "data_criacao",
+    )
+    list_filter = ("eh_servico", "categoria_estetica", "ativo", "data_criacao")
+    search_fields = ("nome", "sku")
