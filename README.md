@@ -1,1 +1,129 @@
-# erp-vity-adv
+# ERP Vity ADV
+
+ERP Vity ADV é uma plataforma jurídica e comercial em Django, com API REST para CRM, jurídico, produtos e financeiro.
+
+## Requisitos
+
+- Python 3.11 ou superior
+- PostgreSQL local ou uma URL de conexão PostgreSQL
+- pip
+
+## Configuração local
+
+```bash
+python -m venv .venv
+source .venv/bin/activate  # no Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env
+```
+
+Para desenvolvimento local, mantenha `DEBUG=True` e configure `.env` com os dados do PostgreSQL local. Quando `DATABASE_URL` estiver vazia, a aplicação usa `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST` e `DB_PORT`. Defina também uma `SECRET_KEY` própria para o ambiente. Em produção (`DEBUG=False`), `DATABASE_URL` é obrigatória.
+
+```bash
+python manage.py migrate
+python manage.py setup_access_control
+python manage.py create_erp_users
+python manage.py runserver
+```
+
+Acesse `http://127.0.0.1:8000/` para entrar no sistema. O frontend inclui painel geral e operações de consulta, cadastro, edição e exclusão para CRM, produtos, pedidos e financeiro. Os perfis de gerente e operador usam essa interface conforme suas permissões.
+
+No cadastro de produtos, marque **É um serviço (não controla estoque)** para que a quantidade não seja mantida e apareça como não controlada.
+
+## Orçamentos e contratos
+
+Cadastre o orçamento no módulo **Orçamentos**. Quando ele for aprovado (status **Ganha**), o sistema cria automaticamente o pedido de venda e os recebíveis conforme a condição comercial; o pedido fica vinculado ao orçamento. Em **Pedidos de venda**, use **Gerar contrato** para preparar a minuta do serviço. Um pedido pode ter apenas um contrato. Preencha o escopo, local, vigência, condições de pagamento e representante do cliente; na lista de contratos, use **PDF para impressão** para gerar o documento com os dados e o logo da empresa. A minuta inclui cláusulas comerciais, confidencialidade, proteção de dados, propriedade intelectual, rescisão, foro e campos de assinatura. É um modelo de partida, que deve ser revisado por assessoria jurídica antes da assinatura e adequado a cada operação.
+
+O logo e as cores principais do sistema são configurados em **Administração → Empresa e integrações → Dados da empresa**. Envie um PNG, JPG ou WebP de até 2 MB; cores devem ser escolhidas nos seletores de cor.
+
+O menu lateral pode ser recolhido e reaberto e lembra a preferência no navegador. A área **Administração**, visível somente para superusuários, reúne atalhos para usuários, grupos/permissões e todos os registros gerenciados pelo Django Admin. O Django Admin fica em `/admin/` e só pode ser acessado por uma conta superusuária (`admin`). O login e os recursos de negócio ficam no frontend próprio.
+
+`create_erp_users` solicita senhas sem exibi-las, valida cada senha e cria ou atualiza as contas `admin`, `gerente` e `operador`. Use senhas fortes e exclusivas; elas não devem ser incluídas no repositório ou na documentação.
+
+No plano Free do Render, o comando interativo não pode ser executado pelo Shell. Para criar as contas sem atualizar o plano, configure temporariamente `ERP_BOOTSTRAP_ADMIN_PASSWORD`, `ERP_BOOTSTRAP_GERENTE_PASSWORD` e `ERP_BOOTSTRAP_OPERADOR_PASSWORD` nas variáveis do serviço. O deploy executa o bootstrap uma única vez após as migrations; quando o deploy concluir, remova essas três variáveis. A conclusão fica registrada no banco e reinícios seguintes não redefinem as senhas.
+
+Se precisar redefinir a senha de `admin` depois do bootstrap, configure `ERP_BOOTSTRAP_ADMIN_PASSWORD` com a nova senha e `ERP_ADMIN_PASSWORD_RESET_TOKEN` com um token aleatório de pelo menos 32 caracteres. Após o deploy concluir, remova as duas variáveis. O token é registrado como usado e não redefinirá a senha novamente em reinícios.
+
+## E-mail
+
+Um superusuário pode cadastrar SMTP autenticado em **Administração → Empresa e integrações**. A senha é criptografada no banco e a conexão pode ser testada no Django Admin. Se não houver configuração salva, o sistema aceita as variáveis `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` e `DEFAULT_FROM_EMAIL`. Para Gmail ou Outlook, use uma senha de aplicativo quando exigida pelo provedor; nunca coloque credenciais no repositório. Use `EMAIL_USE_TLS=True` na porta 587 ou `EMAIL_USE_SSL=True` na porta 465, sem ativar as duas opções ao mesmo tempo.
+
+Antes de salvar senhas SMTP ou certificado A1, configure `CONFIG_ENCRYPTION_KEY` como segredo no Render e no `.env` local. Gere uma chave com `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`. A chave não é armazenada no banco nem no repositório; guarde-a em local seguro e não a troque sem recriptografar os dados. O certificado `.pfx`/`.p12` e sua senha são validados e criptografados no banco, sem publicação em `/media/`.
+
+O link **Esqueci minha senha** na tela de login envia um link de uso único para o endereço cadastrado no usuário. Administradores e gerentes também podem enviar comunicados aos usuários ativos com e-mail cadastrado pelo módulo **E-mails** no menu lateral. Cadastre e mantenha os endereços em Usuários no Django Admin.
+
+## Perfis de acesso
+
+- `admin`: superusuário com acesso total.
+- `gerente`: acesso de leitura e escrita aos módulos do ERP e à API, sem acesso ao Django Admin.
+- `operador`: somente leitura nos módulos de CRM, produtos e financeiro, sem permissões de escrita ou gestão de usuários.
+
+O deploy atualiza os grupos e suas permissões após aplicar as migrations.
+
+## Aplicações
+
+- `crm`: contas (leads, negociações e clientes) e propostas comerciais.
+- `produtos`: catálogo, SKU, preços e quantidade em estoque.
+- `financeiro`: pedidos de venda, contratos, contas a receber e pagamentos.
+- `pdv`: tela independente de caixa, movimentações, vendas com pagamentos divididos e histórico persistido no ERP.
+- `core`: frontend, autenticação, comunicação por e-mail e configuração do projeto Django em `erp_vity_adv`.
+
+As alterações de esquema do banco estão registradas nas migrations de cada aplicação.
+
+## Operação jurídica
+
+O módulo `juridico` adiciona uma base própria para escritórios e operações jurídicas:
+
+- cadastro de processos com número CNJ, tribunal, vara, área, responsável e valor da causa;
+- movimentações processuais com origem manual ou integrada;
+- prazos com responsável, vencimento e status;
+- agenda e tarefas por processo;
+- publicações e monitoramento de CPF, CNPJ ou OAB;
+- indicadores de processos ativos, prazos abertos e publicações urgentes no painel.
+
+A API jurídica está disponível em:
+
+| Recurso | Endpoint |
+| --- | --- |
+| Processos | `/api/juridico/processos/` |
+| Movimentações | `/api/juridico/movimentacoes/` |
+| Prazos | `/api/juridico/prazos/` |
+| Tarefas | `/api/juridico/tarefas/` |
+| Publicações | `/api/juridico/publicacoes/` |
+
+As APIs jurídicas usam autenticação JWT ou sessão, respeitam as permissões dos perfis e suportam busca, filtros e ordenação.
+
+Exemplos:
+
+- `/api/juridico/processos/?search=CNJ&status=ativo&area=civel`
+- `/api/juridico/prazos/?vencidos=true&responsavel=1`
+- `/api/juridico/tarefas/?status=pendente&prioridade=urgente`
+- `/api/juridico/publicacoes/?urgente=true&processada=false`
+- `/api/juridico/processos/resumo/`
+- `POST /api/juridico/tarefas/ID/concluir/`
+- `POST /api/juridico/publicacoes/ID/processar/`
+
+O PDV abre em uma nova aba sem a navegação geral do ERP. A operação comercial não depende de cadastro fiscal nem de comunicação com a SEFAZ: ao concluir uma pré-venda, o sistema registra a venda no ERP, atualiza o estoque de mercadorias e o caixa para valores recebidos em dinheiro. Pix e cartões são lançamentos manuais; o sistema não processa transações. A emissão de documentos fiscais permanece pendente e nenhuma NFS-e ou NFC-e é enviada pelo PDV.
+
+## API
+
+Todas as rotas abaixo são prefixadas por `/api/` e exigem autenticação. Para obter tokens, envie `username` e `password` a `POST /api/auth/token/`; use o token de acesso no cabeçalho `Authorization: Bearer <access>`. Renove-o em `POST /api/auth/token/refresh/` e valide-o em `POST /api/auth/token/verify/`.
+
+| Recurso | Endpoint |
+| --- | --- |
+| Contas e clientes | `/api/crm/contas/`, `/api/crm/clientes/` |
+| Propostas | `/api/crm/propostas/` |
+| Produtos | `/api/produtos/` |
+| Pedidos de venda | `/api/financeiro/pedidos-venda/` |
+| Contas a receber | `/api/financeiro/contas-receber/` |
+| Pagamentos | `/api/financeiro/pagamentos/` |
+
+Os recursos oferecem operações de listagem, consulta por ID, criação, atualização e exclusão. Os endpoints de autenticação aceitam JSON.
+
+Configure `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS` ou `FRONTEND_URL` no `.env` quando a aplicação for acessada por um frontend em outra origem.
+
+## Deploy no Render
+
+O arquivo `render.yaml` configura o Web Service Python. No Render, configure `DATABASE_URL` com a connection string pooled do branch do Neon (`Connect` → `Pooled connection`) como variável secreta do serviço; não a salve no repositório nem em arquivos versionados. O Django exige SSL em produção e desativa server-side cursors para compatibilidade com o pooler. O serviço instala `requirements.txt`, coleta os arquivos estáticos com WhiteNoise, executa as migrations, atualiza os grupos de acesso e tenta o bootstrap único das contas ao iniciar, e então inicia o Gunicorn.
+
+O Render gera `SECRET_KEY`. A configuração define `DEBUG=False` e redirecionamento HTTPS. O host externo é permitido via `RENDER_EXTERNAL_HOSTNAME`. Após conectar o repositório no Render, cada deploy executa `migrate` no banco Neon antes de iniciar o serviço. Não publique arquivos `.env` ou credenciais; mantenha as variáveis secretas na configuração do ambiente do Render.
