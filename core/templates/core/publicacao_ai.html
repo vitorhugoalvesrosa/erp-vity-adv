@@ -1,0 +1,98 @@
+{% extends "core/base.html" %}
+{% load ai_format %}
+
+{% block content %}
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Jurídico · Publicações</p>
+            <h1>{{ publicacao.titulo }}</h1>
+            <p>
+                {{ publicacao.tribunal }} · publicada em {{ publicacao.publicada_em|date:"d/m/Y" }}
+                {% if publicacao.processo %} · <a class="text-link" href="{% url 'processo-ai' pk=publicacao.processo.pk %}">{{ publicacao.processo.numero_cnj }}</a>{% endif %}
+            </p>
+        </div>
+        <div class="page-heading-actions">
+            {% if can_change and not publicacao.processada %}
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="processar">
+                    <button class="button button-secondary" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-check"></use></svg> Marcar como processada</button>
+                </form>
+            {% elif publicacao.processada %}
+                <span class="badge badge-success">Processada</span>
+            {% endif %}
+            <a class="button button-secondary" href="{% url 'record-list' module='publicacoes' %}">Voltar</a>
+        </div>
+    </header>
+
+    <div class="detail-layout">
+        <section class="panel">
+            <div class="panel-header">
+                <div>
+                    <h2>Texto da publicação</h2>
+                    <p>Monitoramento: {{ publicacao.monitoramento }}{% if publicacao.urgente %} · <span class="badge badge-danger">Urgente</span>{% endif %}</p>
+                </div>
+            </div>
+            <div class="publication-text">{{ publicacao.conteudo|linebreaks }}</div>
+        </section>
+
+        <aside class="panel ai-panel">
+            <div class="panel-header">
+                <div>
+                    <h2><svg class="icon ai-spark" aria-hidden="true"><use href="#icon-spark"></use></svg> Análise da IA</h2>
+                    <p>{% if publicacao.analisada_em %}Gerada em {{ publicacao.analisada_em|date:"d/m/Y H:i" }}{% else %}Ainda não analisada{% endif %}</p>
+                </div>
+            </div>
+            <div class="ai-panel-body">
+                {% if publicacao.analisada_em %}
+                    <div class="ai-tags">
+                        <span class="badge badge-info">{{ publicacao.get_classificacao_ia_display }}</span>
+                        {% if publicacao.urgente_ia %}<span class="badge badge-danger">Urgente</span>{% endif %}
+                    </div>
+                    <div class="ai-output">{{ publicacao.resumo_ia|ai_markdown }}</div>
+                    <dl class="kv-list">
+                        <div><dt>Providência sugerida</dt><dd>{{ publicacao.providencia_ia|default:"Nenhuma providência identificada." }}</dd></div>
+                        <div>
+                            <dt>Prazo sugerido</dt>
+                            <dd>
+                                {% if publicacao.prazo_ia_dias %}
+                                    {{ publicacao.prazo_ia_dias }} dia{{ publicacao.prazo_ia_dias|pluralize }}
+                                    {% if publicacao.prazo_ia_fundamento %}<small>{{ publicacao.prazo_ia_fundamento }}</small>{% endif %}
+                                {% else %}Não identificado{% endif %}
+                            </dd>
+                        </div>
+                    </dl>
+                    <p class="ai-disclaimer">Sugestão automática. Confira o texto original, a contagem do prazo em dias úteis e eventuais suspensões antes de agir.</p>
+                {% elif not ai_enabled %}
+                    <div class="empty-state">
+                        <span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#icon-spark"></use></svg></span>
+                        <strong>IA não conectada</strong>
+                        <p>{% if user.is_superuser %}Conecte uma conta em <a class="text-link" href="{% url 'ai-settings' %}">Administração → Inteligência artificial</a>.{% else %}Peça a um administrador para conectar a conta de IA.{% endif %}</p>
+                    </div>
+                {% else %}
+                    <p class="muted">A IA resume a publicação em linguagem simples, classifica o ato e sugere a providência e o prazo.</p>
+                {% endif %}
+
+                <div class="ai-actions">
+                    {% if can_analyze %}
+                        <form method="post" data-ai-form>
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="analisar">
+                            <button class="button" type="submit" data-loading-text="Analisando…">
+                                <svg class="icon" aria-hidden="true"><use href="#icon-spark"></use></svg>
+                                {% if publicacao.analisada_em %}Analisar novamente{% else %}Analisar com IA{% endif %}
+                            </button>
+                        </form>
+                    {% endif %}
+                    {% if publicacao.analisada_em and can_create_task %}
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="criar_tarefa">
+                            <button class="button button-secondary" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg> Criar tarefa sugerida</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </aside>
+    </div>
+{% endblock %}

@@ -1,4 +1,5 @@
 import smtplib
+from datetime import timedelta
 from io import BytesIO
 from xml.sax.saxutils import escape
 
@@ -24,7 +25,7 @@ from reportlab.platypus import Image, KeepTogether, Paragraph, SimpleDocTemplate
 
 from crm.models import Conta, Proposta
 from financeiro.models import Contrato, ContaReceber, Pagamento, PedidoVenda
-from juridico.models import Movimentacao, Prazo, Processo, Publicacao, Tarefa
+from juridico.models import Audiencia, Movimentacao, Prazo, Processo, Publicacao, Tarefa
 from produtos.models import Produto
 from .email_config import get_smtp_settings
 from .configuration_forms import CompanyVisualIdentityForm
@@ -38,6 +39,7 @@ from .forms import (
     PedidoVendaForm,
     ProdutoForm,
     PropostaForm,
+    AudienciaForm,
     MovimentacaoForm,
     PrazoForm,
     ProcessoForm,
@@ -144,6 +146,24 @@ MODULES = {
             ("status", "Status", "choice"),
         ],
         "search": ("titulo", "descricao", "processo__numero_cnj"),
+        "select_related": ("processo", "responsavel"),
+    },
+    "audiencias": {
+        "title": "Audiências",
+        "singular": "audiência",
+        "feminine": True,
+        "app": "juridico",
+        "model": Audiencia,
+        "form": AudienciaForm,
+        "columns": [
+            ("data_hora", "Data e hora", "datetime"),
+            ("titulo", "Audiência", "text"),
+            ("processo", "Processo", "text"),
+            ("modalidade", "Modalidade", "text"),
+            ("responsavel", "Responsável", "text"),
+            ("status", "Status", "choice"),
+        ],
+        "search": ("titulo", "local", "processo__numero_cnj", "processo__titulo"),
         "select_related": ("processo", "responsavel"),
     },
     "publicacoes": {
@@ -381,6 +401,36 @@ def home(request):
                 "module": "recebiveis",
             }
         )
+    hoje = timezone.localdate()
+    amanha = hoje + timedelta(days=1)
+    agenda = {}
+    if can_view(Audiencia):
+        agenda["audiencias"] = list(
+            Audiencia.objects.select_related("processo")
+            .filter(
+                data_hora__date__in=[hoje, amanha],
+                status=Audiencia.Status.AGENDADA,
+            )
+            .order_by("data_hora")[:8]
+        )
+    if can_view(Tarefa):
+        tarefas_abertas = Tarefa.objects.select_related("processo").filter(
+            status__in=[Tarefa.Status.PENDENTE, Tarefa.Status.EM_ANDAMENTO]
+        )
+        agenda["tarefas_hoje"] = list(tarefas_abertas.filter(vencimento=hoje)[:8])
+        agenda["tarefas_atrasadas"] = tarefas_abertas.filter(vencimento__lt=hoje).count()
+    if can_view(Prazo):
+        prazos_abertos = Prazo.objects.select_related("processo").filter(status=Prazo.Status.ABERTO)
+        agenda["prazos_vencidos"] = list(
+            prazos_abertos.filter(data_vencimento__lt=hoje).order_by("data_vencimento")[:6]
+        )
+        agenda["prazos_vencidos_total"] = prazos_abertos.filter(data_vencimento__lt=hoje).count()
+        agenda["prazos_hoje"] = list(prazos_abertos.filter(data_vencimento=hoje)[:6])
+    if agenda:
+        agenda["em_atraso"] = agenda.get("tarefas_atrasadas", 0) + agenda.get(
+            "prazos_vencidos_total", 0
+        )
+
     recent_proposals = []
     if can_view(Proposta):
         recent_proposals = list(Proposta.objects.select_related("conta")[:5])
@@ -397,6 +447,8 @@ def home(request):
                 overdue_receivables.count() if can_view(ContaReceber) else None
             ),
             "recent_proposals": recent_proposals,
+            "agenda": agenda,
+            "amanha": amanha,
             "show_proposals": can_view(Proposta),
             "today": timezone.localdate(),
         },

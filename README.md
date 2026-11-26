@@ -133,7 +133,7 @@ O sistema inclui uma base de atendimento comercial pelo WhatsApp:
 - distribuição automática entre vendedores registrados em `Regras de distribuição de leads`;
 - histórico de conversas e mensagens;
 - follow-ups com responsável, canal, prazo e status;
-- resposta automática configurável por uma API compatível com OpenAI.
+- resposta automática pela conta de IA conectada (ver "Inteligência artificial"), ou pelas variáveis abaixo como alternativa.
 
 Configure no ambiente:
 
@@ -146,6 +146,38 @@ Configure no ambiente:
 - `AI_MODEL`
 
 Endpoint do webhook: `POST /api/crm/whatsapp/webhook/`. O Meta usa `GET /api/crm/whatsapp/verify/` para validar o webhook.
+
+## Inteligência artificial
+
+Um superusuário conecta a conta de IA do escritório em **Administração → Inteligência artificial**. Provedores suportados:
+
+- **Claude (Anthropic)** — chave em console.anthropic.com. Usa o SDK oficial; modelo padrão `claude-opus-5-5` (também disponíveis `claude-sonnet-5-5` e `claude-haiku-5-5`). Nos modelos que aceitam, o fallback do servidor refaz automaticamente um pedido recusado por engano.
+- **OpenAI** — chave em platform.openai.com; informe o modelo liberado na conta.
+- **Google Gemini** — chave no Google AI Studio, pelo endpoint compatível com OpenAI.
+
+Assinaturas de chat (ChatGPT Plus, Claude Pro/Max, Gemini Advanced) não dão acesso por API: é preciso uma chave de API, cobrada por uso pelo provedor. A chave é criptografada com `CONFIG_ENCRYPTION_KEY` e nunca é exibida; o botão **Testar conexão** valida chave e modelo sem gerar texto.
+
+Recursos (cada um pode ser ligado ou desligado na mesma tela):
+
+- **Publicações**: resumo em linguagem simples, classificação do ato, urgência, providência e prazo sugeridos; cria a tarefa sugerida com um clique. API: `POST /api/juridico/publicacoes/{id}/analisar-ia/`.
+- **Resumo do processo**: na ficha do processo (`/app/processos/{id}/ia/`), a partir de movimentações, prazos, tarefas, audiências e publicações.
+- **Assistente jurídico** (`/assistente/`): conversa com contexto opcional de um processo.
+- **Atendimento inicial no WhatsApp**: primeira resposta automática aos leads.
+
+O **limite mensal de tokens** pausa a IA quando atingido. O ERP registra apenas o consumo (recurso, usuário, modelo e tokens), nunca o conteúdo enviado. Prazos sugeridos pela IA são estimativas: confira sempre a contagem em dias úteis.
+
+## Roadmap (referência SisJud)
+
+Entregue na fase 1: conexão de IA, análise de publicações, resumo de processos, assistente jurídico, audiências e "Resumo do dia" na home.
+
+Próximas fases sugeridas:
+
+1. **Tarefas e prazos**: tipo de prazo (fatal/interno/livre), contagem em dias úteis com feriados, kanban, recorrência e etiquetas.
+2. **Processos**: filtros rápidos (vencidos, hoje, semana, sem movimentação), fases processuais, apensos e subclientes.
+3. **Captura automática**: publicações por OAB e importação via ComunicA/DataJud, com cadastro do caso a partir da publicação.
+4. **Financeiro jurídico**: honorários, parcerias com percentual, boletos (Inter/Asaas), NFS-e e régua de cobrança.
+5. **Documentos**: modelos com dados do caso, GED e assinatura digital.
+6. **Gestão**: auditoria, permissões por módulo, notificações e construtor de relatórios.
 
 ## Integrações judiciais
 

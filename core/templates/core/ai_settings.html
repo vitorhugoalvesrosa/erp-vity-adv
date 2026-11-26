@@ -1,0 +1,202 @@
+{% extends "core/base.html" %}
+{% load humanize %}
+
+{% block content %}
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Administração</p>
+            <h1>Inteligência artificial</h1>
+            <p>Conecte a conta de IA do escritório para analisar publicações, resumir processos e usar o assistente jurídico.</p>
+        </div>
+        <a class="button button-secondary" href="{% url 'admin-settings' %}">Voltar à administração</a>
+    </header>
+
+    <section class="ai-status-grid" aria-label="Situação da conexão">
+        <article class="panel ai-status-card">
+            <span class="ai-status-label">Conexão</span>
+            {% if not config %}
+                <span class="badge badge-neutral">Não conectada</span>
+                <p>Preencha o formulário abaixo com a chave do seu provedor.</p>
+            {% elif not config.is_active %}
+                <span class="badge badge-warning">Desativada</span>
+                <p>{{ config }}</p>
+            {% elif config.last_test_at and config.last_test_ok %}
+                <span class="badge badge-success">Conectada</span>
+                <p>{{ config }} · testada em {{ config.last_test_at|date:"d/m/Y H:i" }}</p>
+            {% elif config.last_test_at %}
+                <span class="badge badge-danger">Falha no teste</span>
+                <p>{{ config.last_test_message }}</p>
+            {% else %}
+                <span class="badge badge-info">Salva, não testada</span>
+                <p>{{ config }}</p>
+            {% endif %}
+            {% if config and config.has_api_key %}
+                <form method="post" class="ai-status-action">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="test">
+                    <button class="button button-secondary" type="submit">Testar conexão</button>
+                </form>
+            {% endif %}
+        </article>
+
+        <article class="panel ai-status-card">
+            <span class="ai-status-label">Consumo este mês</span>
+            <strong class="ai-status-value num">{{ tokens_used|intcomma }} <small>tokens</small></strong>
+            {% if token_limit %}
+                <div class="meter" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ token_percent }}" aria-label="Uso do limite mensal">
+                    <span style="width: {{ token_percent }}%" class="{% if token_percent >= 90 %}is-danger{% elif token_percent >= 70 %}is-warning{% endif %}"></span>
+                </div>
+                <p>{{ token_percent }}% do limite de {{ token_limit|intcomma }} tokens.</p>
+            {% else %}
+                <p>Sem limite mensal definido.</p>
+            {% endif %}
+        </article>
+
+        <article class="panel ai-status-card">
+            <span class="ai-status-label">Chamadas este mês</span>
+            <strong class="ai-status-value num">{{ month_calls|intcomma }}</strong>
+            <p>{% if month_errors %}{{ month_errors }} com erro.{% else %}Nenhuma com erro.{% endif %}</p>
+        </article>
+    </section>
+
+    <div class="ai-settings-layout">
+        <section class="panel record-form-panel">
+            <h2 class="form-section-title">Conta do provedor</h2>
+            <form method="post" novalidate id="ai-config-form">
+                {% csrf_token %}
+                {% if form.non_field_errors %}<div class="form-error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+                <div class="form-grid">
+                    {% for field in form %}
+                        {% if field.name in "provider model api_key monthly_token_limit" %}
+                            <div class="form-field {% if field.name == 'api_key' %}is-wide{% endif %}">
+                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {{ field.errors }}
+                                {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <datalist id="ai-model-options">
+                    {% for value, label in anthropic_models %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                </datalist>
+
+                <h2 class="form-section-title">Recursos liberados</h2>
+                <div class="toggle-list">
+                    {% for field in form %}
+                        {% if field.field.widget.input_type == "checkbox" %}
+                            <label class="toggle-row" for="{{ field.id_for_label }}">
+                                {{ field }}
+                                <span>
+                                    <strong>{{ field.label }}</strong>
+                                    <small>
+                                        {% if field.name == "is_active" %}Liga ou desliga toda a IA do sistema.
+                                        {% elif field.name == "enable_publications" %}Resume, classifica e sugere providência e prazo para cada publicação.
+                                        {% elif field.name == "enable_case_summary" %}Gera o resumo do caso a partir de movimentações, prazos e tarefas.
+                                        {% elif field.name == "enable_assistant" %}Assistente para dúvidas, rascunhos e análise de processos.
+                                        {% elif field.name == "enable_whatsapp" %}Responde automaticamente a primeira mensagem dos leads.{% endif %}
+                                    </small>
+                                </span>
+                            </label>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                <div class="form-actions">
+                    <button class="button" type="submit">Salvar conexão</button>
+                </div>
+            </form>
+        </section>
+
+        <aside class="ai-help">
+            <section class="panel ai-help-card">
+                <h2>Onde obter a chave</h2>
+                <ul class="ai-provider-list">
+                    <li><strong>Claude (Anthropic)</strong><span>console.anthropic.com → API Keys</span></li>
+                    <li><strong>OpenAI</strong><span>platform.openai.com → API keys</span></li>
+                    <li><strong>Google Gemini</strong><span>aistudio.google.com → Get API key</span></li>
+                </ul>
+                <p class="helptext">Assinaturas de chat (ChatGPT Plus, Claude Pro/Max, Gemini Advanced) não dão acesso por API. A chave é cobrada por uso, direto pelo provedor.</p>
+            </section>
+            <section class="admin-note">
+                <svg class="nav-icon" aria-hidden="true"><use href="#icon-shield"></use></svg>
+                <p><strong>Privacidade (LGPD)</strong> — ao usar a IA, o texto das publicações e os dados do processo consultado são enviados ao provedor escolhido. Confira os termos de uso de dados da sua conta e evite enviar informações sensíveis desnecessárias. O ERP registra apenas o consumo de tokens, nunca o conteúdo.</p>
+            </section>
+            {% if config %}
+                <form method="post" action="{% url 'ai-settings-remove' %}" class="ai-disconnect">
+                    {% csrf_token %}
+                    <button class="text-link text-danger row-action-button" type="submit">Desconectar e apagar a chave</button>
+                </form>
+            {% endif %}
+        </aside>
+    </div>
+
+    <section class="panel ai-usage-panel">
+        <div class="panel-header">
+            <div>
+                <h2>Uso por recurso</h2>
+                <p>Mês atual</p>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="data-table data-table-stack">
+                <thead><tr><th>Recurso</th><th>Chamadas</th><th>Tokens</th></tr></thead>
+                <tbody>
+                    {% for row in by_feature %}
+                        <tr>
+                            <td data-label="Recurso">{{ row.label }}</td>
+                            <td class="cell-number" data-label="Chamadas">{{ row.calls|intcomma }}</td>
+                            <td class="cell-number" data-label="Tokens">{{ row.tokens|intcomma }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td class="cell-full" colspan="3"><div class="empty-state"><strong>Nenhum uso neste mês</strong><p>As chamadas de IA aparecerão aqui.</p></div></td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    {% if recent_logs %}
+        <section class="panel ai-usage-panel">
+            <div class="panel-header"><div><h2>Últimas chamadas</h2><p>Apenas metadados — o conteúdo não é armazenado.</p></div></div>
+            <div class="table-wrap">
+                <table class="data-table data-table-stack">
+                    <thead><tr><th>Quando</th><th>Recurso</th><th>Usuário</th><th>Modelo</th><th>Tokens</th><th>Resultado</th></tr></thead>
+                    <tbody>
+                        {% for log in recent_logs %}
+                            <tr>
+                                <td class="cell-date" data-label="Quando">{{ log.created_at|date:"d/m H:i" }}</td>
+                                <td data-label="Recurso">{{ log.get_feature_display }}</td>
+                                <td data-label="Usuário">{{ log.user|default:"Sistema" }}</td>
+                                <td data-label="Modelo">{{ log.model }}</td>
+                                <td class="cell-number" data-label="Tokens">{{ log.total_tokens|intcomma }}</td>
+                                <td data-label="Resultado">{% if log.success %}<span class="badge badge-success">OK</span>{% else %}<span class="badge badge-danger" title="{{ log.error_message }}">Erro</span>{% endif %}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    {% endif %}
+
+    {{ default_models|json_script:"ai-default-models" }}
+    <script>
+        (() => {
+            const provider = document.getElementById("id_provider");
+            const model = document.getElementById("id_model");
+            const defaults = JSON.parse(document.getElementById("ai-default-models").textContent);
+            const modelList = document.getElementById("ai-model-options");
+            let previous = provider.value;
+            const sync = () => {
+                model.setAttribute("list", provider.value === "anthropic" ? "ai-model-options" : "");
+                if (!model.value || model.value === defaults[previous]) {
+                    model.value = defaults[provider.value] || "";
+                }
+                previous = provider.value;
+            };
+            provider.addEventListener("change", sync);
+            if (!model.value) sync();
+            model.setAttribute("list", provider.value === "anthropic" ? modelList.id : "");
+        })();
+    </script>
+{% endblock %}

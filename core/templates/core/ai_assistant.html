@@ -1,0 +1,93 @@
+{% extends "core/base.html" %}
+{% load ai_format %}
+
+{% block content %}
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Jurídico</p>
+            <h1>Assistente jurídico</h1>
+            <p>Tire dúvidas, peça rascunhos e analise processos com IA. Revise sempre a resposta antes de usar.</p>
+        </div>
+        {% if history %}
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="limpar">
+                <button class="button button-secondary" type="submit">Nova conversa</button>
+            </form>
+        {% endif %}
+    </header>
+
+    {% if not ai_enabled %}
+        <section class="panel empty-state">
+            <span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#icon-spark"></use></svg></span>
+            <strong>Assistente indisponível</strong>
+            <p>{% if user.is_superuser %}Conecte uma conta de IA em <a class="text-link" href="{% url 'ai-settings' %}">Administração → Inteligência artificial</a>.{% else %}Peça a um administrador para conectar a conta de IA.{% endif %}</p>
+        </section>
+    {% else %}
+        <section class="panel chat-panel">
+            <div class="chat-log" id="chat-log" aria-live="polite">
+                {% for turn in history %}
+                    <article class="chat-message chat-{{ turn.role }}">
+                        <span class="chat-avatar" aria-hidden="true">{% if turn.role == "user" %}{{ user.username|slice:":1"|upper }}{% else %}<svg class="icon"><use href="#icon-spark"></use></svg>{% endif %}</span>
+                        <div class="chat-bubble">
+                            {% if turn.role == "assistant" %}{{ turn.content|ai_markdown }}{% else %}{{ turn.content|linebreaksbr }}{% endif %}
+                        </div>
+                    </article>
+                {% empty %}
+                    <div class="chat-empty">
+                        <span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#icon-spark"></use></svg></span>
+                        <strong>Como posso ajudar?</strong>
+                        <p>Selecione um processo para dar contexto ao assistente, ou pergunte livremente.</p>
+                        <div class="chat-suggestions">
+                            {% for sugestao in sugestoes %}
+                                <button class="chip" type="button" data-suggestion="{{ sugestao }}">{{ sugestao }}</button>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <form class="chat-form" method="post" data-ai-form>
+                {% csrf_token %}
+                <div class="chat-context">
+                    <label for="chat-processo">Contexto</label>
+                    <select class="form-select" id="chat-processo" name="processo">
+                        <option value="">Sem processo — pergunta geral</option>
+                        {% for item in processos %}
+                            <option value="{{ item.pk }}" {% if processo and item.pk == processo.pk %}selected{% endif %}>{{ item.numero_cnj }} — {{ item.titulo|truncatechars:60 }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="chat-input">
+                    <textarea class="form-control" id="chat-pergunta" name="pergunta" rows="3" maxlength="8000" placeholder="Escreva sua pergunta… (Ctrl+Enter para enviar)" required></textarea>
+                    <button class="button" type="submit" data-loading-text="Pensando…">
+                        <svg class="icon" aria-hidden="true"><use href="#icon-spark"></use></svg> Enviar
+                    </button>
+                </div>
+                <p class="ai-disclaimer">As respostas são geradas por IA e podem conter erros. Confira leis, prazos e jurisprudência nas fontes oficiais.</p>
+            </form>
+        </section>
+    {% endif %}
+
+    <script>
+        (() => {
+            const log = document.getElementById("chat-log");
+            if (log) log.scrollTop = log.scrollHeight;
+            const textarea = document.getElementById("chat-pergunta");
+            document.querySelectorAll("[data-suggestion]").forEach((chip) => {
+                chip.addEventListener("click", () => {
+                    textarea.value = chip.dataset.suggestion;
+                    textarea.focus();
+                });
+            });
+            if (textarea) {
+                textarea.addEventListener("keydown", (event) => {
+                    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+                        event.preventDefault();
+                        textarea.form.requestSubmit();
+                    }
+                });
+            }
+        })();
+    </script>
+{% endblock %}

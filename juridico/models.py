@@ -50,6 +50,8 @@ class Processo(models.Model):
         default=0,
     )
     observacoes = models.TextField("Observações", blank=True)
+    resumo_ia = models.TextField("Resumo gerado por IA", blank=True, editable=False)
+    resumo_ia_em = models.DateTimeField(null=True, blank=True, editable=False)
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
@@ -174,6 +176,38 @@ class Publicacao(models.Model):
     capturada_em = models.DateTimeField(auto_now_add=True)
     urgente = models.BooleanField("Urgente", default=False)
     processada = models.BooleanField("Processada", default=False)
+
+    class ClassificacaoIA(models.TextChoices):
+        INTIMACAO = "intimacao", "Intimação"
+        CITACAO = "citacao", "Citação"
+        DESPACHO = "despacho", "Despacho"
+        DECISAO = "decisao", "Decisão interlocutória"
+        SENTENCA = "sentenca", "Sentença"
+        ACORDAO = "acordao", "Acórdão"
+        AUDIENCIA = "audiencia", "Designação de audiência"
+        PAUTA = "pauta", "Pauta de julgamento"
+        EDITAL = "edital", "Edital"
+        OUTRO = "outro", "Outro"
+
+    resumo_ia = models.TextField("Resumo da IA", blank=True, editable=False)
+    classificacao_ia = models.CharField(
+        "Classificação da IA",
+        max_length=20,
+        choices=ClassificacaoIA.choices,
+        blank=True,
+        editable=False,
+    )
+    providencia_ia = models.CharField(
+        "Providência sugerida", max_length=255, blank=True, editable=False
+    )
+    prazo_ia_dias = models.PositiveSmallIntegerField(
+        "Prazo sugerido (dias)", null=True, blank=True, editable=False
+    )
+    prazo_ia_fundamento = models.CharField(
+        "Fundamento do prazo", max_length=255, blank=True, editable=False
+    )
+    urgente_ia = models.BooleanField("Urgente (IA)", default=False, editable=False)
+    analisada_em = models.DateTimeField(null=True, blank=True, editable=False)
 
     class Meta:
         ordering = ["-publicada_em", "-capturada_em"]

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import models
 
@@ -145,3 +146,85 @@ class A1Certificate(models.Model):
 
     def __str__(self):
         return f"Certificado A1 válido até {self.valid_until:%d/%m/%Y}"
+
+
+class AIConfiguration(models.Model):
+    """Conta de IA conectada ao ERP. Existe no máximo um registro."""
+
+    class Provider(models.TextChoices):
+        ANTHROPIC = "anthropic", "Claude (Anthropic)"
+        OPENAI = "openai", "OpenAI (ChatGPT)"
+        GEMINI = "gemini", "Google Gemini"
+
+    provider = models.CharField(
+        "Provedor",
+        max_length=20,
+        choices=Provider.choices,
+        default=Provider.ANTHROPIC,
+    )
+    model = models.CharField("Modelo", max_length=100)
+    api_key_encrypted = models.BinaryField(
+        "Chave de API criptografada",
+        editable=False,
+        default=bytes,
+    )
+    api_key_hint = models.CharField(max_length=12, blank=True, editable=False)
+    is_active = models.BooleanField("IA ativa", default=True)
+    monthly_token_limit = models.PositiveIntegerField(
+        "Limite mensal de tokens",
+        default=0,
+        help_text="0 = sem limite. Ao atingir o limite, a IA fica pausada até o mês seguinte.",
+    )
+    enable_publications = models.BooleanField("Analisar publicações", default=True)
+    enable_case_summary = models.BooleanField("Resumo de processos", default=True)
+    enable_assistant = models.BooleanField("Assistente jurídico", default=True)
+    enable_whatsapp = models.BooleanField("Atendimento inicial no WhatsApp", default=False)
+    last_test_at = models.DateTimeField(null=True, blank=True, editable=False)
+    last_test_ok = models.BooleanField(default=False, editable=False)
+    last_test_message = models.CharField(max_length=500, blank=True, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Conexão de IA"
+        verbose_name_plural = "Conexão de IA"
+
+    def __str__(self):
+        return f"{self.get_provider_display()} · {self.model}"
+
+    @property
+    def has_api_key(self):
+        return bool(self.api_key_encrypted)
+
+
+class AIUsageLog(models.Model):
+    class Feature(models.TextChoices):
+        PUBLICATION = "publicacao", "Análise de publicação"
+        CASE_SUMMARY = "resumo_processo", "Resumo de processo"
+        ASSISTANT = "assistente", "Assistente jurídico"
+        WHATSAPP = "whatsapp", "Atendimento WhatsApp"
+        TEST = "teste", "Teste de conexão"
+
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ai_usage",
+    )
+    feature = models.CharField(max_length=30, choices=Feature.choices)
+    provider = models.CharField(max_length=20)
+    model = models.CharField(max_length=100)
+    input_tokens = models.PositiveIntegerField(default=0)
+    output_tokens = models.PositiveIntegerField(default=0)
+    success = models.BooleanField(default=True)
+    error_message = models.CharField(max_length=500, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Uso de IA"
+        verbose_name_plural = "Uso de IA"
+
+    @property
+    def total_tokens(self):
+        return self.input_tokens + self.output_tokens

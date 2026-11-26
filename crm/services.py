@@ -87,7 +87,38 @@ def qualificar_mensagem(conta, texto):
     return qualificacao
 
 
+WHATSAPP_SYSTEM_PROMPT = (
+    "Você é o atendente inicial de um escritório de advocacia no WhatsApp. "
+    "Responda de forma profissional, cordial e curta (até 3 frases), sem prometer resultado "
+    "jurídico e sem dar orientação jurídica definitiva. Colete: nome, se é pessoa física ou "
+    "jurídica (CPF/CNPJ), assunto, urgência e melhor horário para contato. Nunca peça senhas, "
+    "códigos ou dados bancários."
+)
+
+
 def responder_com_ia(texto, qualificacao, nome_cliente=""):
+    from core.ai import AIError, feature_enabled, generate
+    from core.models import AIUsageLog
+
+    if feature_enabled(AIUsageLog.Feature.WHATSAPP):
+        prompt = json.dumps(
+            {"mensagem_do_lead": texto, "qualificacao_atual": qualificacao, "nome": nome_cliente},
+            ensure_ascii=False,
+        )
+        try:
+            resposta = generate(
+                AIUsageLog.Feature.WHATSAPP,
+                prompt,
+                system=WHATSAPP_SYSTEM_PROMPT,
+                max_tokens=4000,
+                effort="low",
+            ).text
+            if resposta:
+                return resposta
+        except AIError:
+            pass
+        return "Recebi sua mensagem. Um especialista irá priorizar o atendimento. Você pode informar seu nome e, se quiser, CPF ou CNPJ?"
+
     api_url = getattr(settings, "AI_API_URL", "")
     api_key = getattr(settings, "AI_API_KEY", "")
     if not api_url or not api_key:

@@ -6,7 +6,7 @@ from django import forms
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.utils import timezone
 
-from core.models import A1Certificate, CompanyProfile, SMTPConfiguration
+from core.models import A1Certificate, AIConfiguration, CompanyProfile, SMTPConfiguration
 from core.secure_storage import encrypt_bytes, encrypt_text, validate_encryption_key
 
 
@@ -261,4 +261,74 @@ class A1CertificateForm(forms.ModelForm):
         if commit:
             instance.save()
             self.save_m2m()
+        return instance
+
+
+class AIConfigurationForm(forms.ModelForm):
+    api_key = forms.CharField(
+        label="Chave de API",
+        required=False,
+        strip=True,
+        widget=forms.PasswordInput(
+            attrs={"autocomplete": "off", "class": "form-control", "spellcheck": "false"}
+        ),
+        help_text="Criptografada no banco e nunca exibida. Em branco, mantém a chave atual.",
+    )
+
+    class Meta:
+        model = AIConfiguration
+        fields = (
+            "provider",
+            "model",
+            "api_key",
+            "is_active",
+            "monthly_token_limit",
+            "enable_publications",
+            "enable_case_summary",
+            "enable_assistant",
+            "enable_whatsapp",
+        )
+        widgets = {
+            "provider": forms.Select(attrs={"class": "form-select"}),
+            "model": forms.TextInput(attrs={"class": "form-control", "list": "ai-model-options"}),
+            "monthly_token_limit": forms.NumberInput(attrs={"class": "form-control", "step": "1000"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["model"].help_text = (
+            "Para Claude, escolha na lista. Para OpenAI e Gemini, informe o nome exato do "
+            "modelo liberado na sua conta."
+        )
+        if self.instance.pk and self.instance.api_key_hint:
+            self.fields["api_key"].help_text = (
+                f"Chave atual termina em …{self.instance.api_key_hint}. "
+                "Em branco, mantém a chave atual."
+            )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        api_key = cleaned_data.get("api_key")
+        if not api_key and not self.instance.has_api_key:
+            self.add_error("api_key", "Informe a chave de API do provedor.")
+        if api_key:
+            if len(api_key) < 20 or any(char.isspace() for char in api_key):
+                self.add_error("api_key", "A chave informada não parece válida.")
+            try:
+                validate_encryption_key()
+            except ImproperlyConfigured as exc:
+                self.add_error("api_key", str(exc))
+        return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        api_key = self.cleaned_data.get("api_key")
+        if api_key:
+            instance.api_key_encrypted = encrypt_text(api_key)
+            instance.api_key_hint = api_key[-4:]
+            instance.last_test_at = None
+            instance.last_test_ok = False
+            instance.last_test_message = ""
+        if commit:
+            instance.save()
         return instance

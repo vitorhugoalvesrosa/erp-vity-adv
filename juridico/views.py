@@ -190,6 +190,19 @@ class PublicacaoViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(tribunal__icontains=tribunal)
         return queryset
 
+    @action(detail=True, methods=["post"], url_path="analisar-ia")
+    def analisar_ia(self, request, pk=None):
+        from core.ai import AIError
+
+        from .ai import analisar_publicacao
+
+        publicacao = self.get_object()
+        try:
+            analisar_publicacao(publicacao, user=request.user)
+        except AIError as exc:
+            return Response({"detail": str(exc)}, status=503)
+        return Response(self.get_serializer(publicacao).data)
+
     @action(detail=True, methods=["post"])
     def processar(self, request, pk=None):
         publicacao = self.get_object()

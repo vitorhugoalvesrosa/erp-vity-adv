@@ -11,6 +11,16 @@
     </header>
 
     <section class="admin-grid" aria-label="Configurações do sistema">
+        <article class="panel admin-card admin-card-featured">
+            <span class="admin-card-icon tone-violet"><svg class="icon" aria-hidden="true"><use href="#icon-spark"></use></svg></span>
+            <h2>Inteligência artificial</h2>
+            <p>Conecte a conta de IA do escritório (Claude, OpenAI ou Gemini), escolha os recursos liberados e acompanhe o consumo.</p>
+            <div class="admin-card-links">
+                <a class="text-link" href="{% url 'ai-settings' %}">Configurar IA</a>
+                <a class="text-link" href="{% url 'ai-assistant' %}">Abrir assistente</a>
+            </div>
+        </article>
+
         <article class="panel admin-card">
             <span class="admin-card-icon tone-blue"><svg class="icon" aria-hidden="true"><use href="#icon-palette"></use></svg></span>
             <h2>Identidade visual</h2>

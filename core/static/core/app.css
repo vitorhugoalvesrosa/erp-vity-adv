@@ -2285,3 +2285,704 @@ a.alert-strip:hover {
     flex: none;
     white-space: nowrap;
 }
+
+/* ---------- Utilitários ---------- */
+
+.muted {
+    color: var(--muted);
+}
+
+.button.is-loading {
+    cursor: progress;
+    opacity: 0.75;
+}
+
+.button.is-loading .icon {
+    animation: ai-pulse 1s ease-in-out infinite;
+}
+
+@keyframes ai-pulse {
+    50% {
+        opacity: 0.3;
+        transform: scale(0.85);
+    }
+}
+
+.chip {
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-2);
+    background: var(--surface);
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.chip:hover {
+    border-color: var(--brand);
+    background: var(--brand-soft);
+}
+
+/* ---------- Layout de detalhe ---------- */
+
+.detail-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr);
+    align-items: start;
+    gap: 16px;
+}
+
+.detail-main,
+.detail-side {
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+}
+
+.publication-text {
+    max-height: 70vh;
+    padding: 20px;
+    overflow-y: auto;
+    color: var(--text-2);
+    line-height: 1.65;
+}
+
+.publication-text p + p {
+    margin-top: 10px;
+}
+
+.kv-list {
+    display: grid;
+    gap: 12px;
+    margin: 16px 0 0;
+}
+
+.kv-list > div {
+    display: grid;
+    gap: 2px;
+}
+
+.kv-list dt {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.kv-list dd {
+    display: grid;
+    margin: 0;
+    color: var(--text);
+}
+
+.kv-list dd small {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.kv-padded {
+    margin: 0;
+    padding: 16px 20px;
+}
+
+.mini-list {
+    display: grid;
+    margin: 0;
+    padding: 4px 0;
+    list-style: none;
+}
+
+.mini-list > li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+}
+
+.mini-list > li:last-child {
+    border-bottom: 0;
+}
+
+.mini-list > li > span:first-child {
+    display: grid;
+    min-width: 0;
+}
+
+.mini-list strong {
+    overflow: hidden;
+    color: var(--text);
+    font-weight: 500;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.mini-list small {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.mini-list time {
+    flex: none;
+    color: var(--text-2);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.mini-list time.is-today {
+    color: var(--brand-text);
+}
+
+.timeline {
+    display: grid;
+    margin: 0;
+    padding: 8px 20px 16px;
+    list-style: none;
+}
+
+.timeline li {
+    position: relative;
+    display: grid;
+    grid-template-columns: 84px minmax(0, 1fr);
+    gap: 12px;
+    padding: 10px 0 10px 18px;
+    font-size: 13px;
+}
+
+.timeline li::before {
+    position: absolute;
+    top: 16px;
+    left: 0;
+    width: 8px;
+    height: 8px;
+    border: 2px solid var(--brand);
+    border-radius: 999px;
+    background: var(--surface);
+    content: "";
+}
+
+.timeline li:not(:last-child)::after {
+    position: absolute;
+    top: 28px;
+    bottom: -6px;
+    left: 4px;
+    width: 1px;
+    background: var(--border);
+    content: "";
+}
+
+.timeline li.muted::before,
+.timeline li.muted::after {
+    display: none;
+}
+
+.timeline time {
+    color: var(--muted);
+    font-weight: 500;
+}
+
+/* ---------- Painel de IA ---------- */
+
+.ai-spark {
+    margin-right: 4px;
+    color: var(--violet);
+    vertical-align: -3px;
+}
+
+.ai-panel {
+    position: relative;
+    overflow: hidden;
+}
+
+.ai-panel::before {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--blue), var(--violet), var(--mint));
+    content: "";
+}
+
+.ai-panel-body {
+    padding: 18px 20px 20px;
+}
+
+.ai-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.ai-output {
+    color: var(--text-2);
+    line-height: 1.65;
+}
+
+.ai-output > * + * {
+    margin-top: 10px;
+}
+
+.ai-output h4 {
+    margin: 16px 0 4px;
+    color: var(--text);
+    font-size: 14px;
+}
+
+.ai-output ul,
+.ai-output ol {
+    margin: 6px 0;
+    padding-left: 20px;
+}
+
+.ai-output li + li {
+    margin-top: 4px;
+}
+
+.ai-output strong {
+    color: var(--text);
+    font-weight: 600;
+}
+
+.ai-output code {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: var(--surface-hover);
+    font-size: 12px;
+}
+
+.ai-disclaimer {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--border);
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.ai-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 18px;
+}
+
+.ai-actions form {
+    margin: 0;
+}
+
+/* ---------- Configuração de IA ---------- */
+
+.ai-status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.ai-status-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 16px;
+}
+
+.ai-status-card p {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.ai-status-label {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.ai-status-value {
+    font-size: 22px;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+}
+
+.ai-status-value small {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.ai-status-action {
+    margin-top: auto;
+}
+
+.meter {
+    width: 100%;
+    height: 6px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--surface-hover);
+}
+
+.meter span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--brand);
+}
+
+.meter span.is-warning {
+    background: var(--amber);
+}
+
+.meter span.is-danger {
+    background: var(--danger);
+}
+
+.ai-settings-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 880px) minmax(260px, 1fr);
+    align-items: start;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.ai-settings-layout .record-form-panel {
+    max-width: none;
+}
+
+.form-section-title {
+    margin-bottom: 14px;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.form-grid + .form-section-title,
+datalist + .form-section-title {
+    margin-top: 28px;
+}
+
+.toggle-list {
+    display: grid;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.toggle-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+}
+
+.toggle-row:last-child {
+    border-bottom: 0;
+}
+
+.toggle-row:hover {
+    background: var(--surface-2);
+}
+
+.toggle-row input {
+    margin-top: 2px;
+}
+
+.toggle-row > span {
+    display: grid;
+    gap: 2px;
+}
+
+.toggle-row strong {
+    font-weight: 500;
+}
+
+.toggle-row small {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.ai-help {
+    display: grid;
+    gap: 12px;
+}
+
+.ai-help-card {
+    padding: 18px;
+}
+
+.ai-help-card h2 {
+    margin-bottom: 12px;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.ai-provider-list {
+    display: grid;
+    gap: 10px;
+    margin: 0 0 12px;
+    padding: 0;
+    list-style: none;
+}
+
+.ai-provider-list li {
+    display: grid;
+    font-size: 13px;
+}
+
+.ai-provider-list span {
+    color: var(--muted);
+}
+
+.ai-disconnect {
+    padding: 0 4px;
+}
+
+.ai-usage-panel {
+    margin-bottom: 16px;
+}
+
+.admin-card-featured {
+    border-color: color-mix(in srgb, var(--violet) 30%, var(--border));
+    background:
+        linear-gradient(135deg, color-mix(in srgb, var(--violet) 6%, transparent), transparent 60%),
+        var(--surface);
+}
+
+/* ---------- Assistente (chat) ---------- */
+
+.chat-panel {
+    display: flex;
+    flex-direction: column;
+    max-width: 960px;
+    min-height: min(70vh, 720px);
+}
+
+.chat-log {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 18px;
+    max-height: 62vh;
+    padding: 24px;
+    overflow-y: auto;
+}
+
+.chat-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.chat-user {
+    flex-direction: row-reverse;
+}
+
+.chat-avatar {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    flex: none;
+    place-items: center;
+    border-radius: 999px;
+    color: #fff;
+    background: var(--brand);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.chat-assistant .chat-avatar {
+    background: linear-gradient(135deg, var(--blue), var(--violet));
+}
+
+.chat-bubble {
+    max-width: min(720px, 85%);
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    color: var(--text-2);
+    background: var(--surface-2);
+    line-height: 1.6;
+}
+
+.chat-bubble > * + * {
+    margin-top: 8px;
+}
+
+.chat-bubble ul,
+.chat-bubble ol {
+    margin: 6px 0;
+    padding-left: 20px;
+}
+
+.chat-bubble h4 {
+    margin: 12px 0 2px;
+    color: var(--text);
+}
+
+.chat-bubble strong {
+    color: var(--text);
+}
+
+.chat-user .chat-bubble {
+    border-color: transparent;
+    color: #fff;
+    background: var(--brand);
+}
+
+.chat-empty {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    margin: auto;
+    padding: 24px 0;
+    text-align: center;
+}
+
+.chat-empty strong {
+    font-size: 16px;
+}
+
+.chat-empty p {
+    color: var(--muted);
+}
+
+.chat-empty .empty-icon,
+.empty-state .empty-icon {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    margin-bottom: 6px;
+    place-items: center;
+    border-radius: var(--radius-lg);
+    color: var(--violet);
+    background: color-mix(in srgb, var(--violet) 10%, var(--surface));
+}
+
+.chat-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    max-width: 640px;
+    margin-top: 12px;
+}
+
+.chat-form {
+    display: grid;
+    gap: 10px;
+    padding: 16px 20px 18px;
+    border-top: 1px solid var(--border);
+    background: var(--surface-2);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+.chat-context {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.chat-context label {
+    flex: none;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.chat-context .form-select {
+    max-width: 520px;
+}
+
+.chat-input {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.chat-input textarea {
+    min-height: 64px;
+    resize: vertical;
+}
+
+.chat-form .ai-disclaimer {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
+/* ---------- Resumo do dia ---------- */
+
+.day-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.day-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.day-card-header > div {
+    flex: 1;
+    min-width: 0;
+}
+
+.day-card-header h2 {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.day-card-header p {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.day-card-alert {
+    border-color: color-mix(in srgb, var(--danger) 30%, var(--border));
+}
+
+@media (max-width: 1120px) {
+    .detail-layout,
+    .ai-settings-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .chat-log {
+        padding: 16px;
+    }
+
+    .chat-bubble {
+        max-width: 100%;
+    }
+
+    .chat-input {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .chat-context {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .timeline li {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 2px;
+    }
+}
+
+.mini-list time.text-danger,
+.mini-list .text-danger {
+    color: var(--danger);
+}

@@ -5,7 +5,7 @@ from django.db import models
 
 from crm.models import Conta, Proposta
 from financeiro.models import Contrato, ContaReceber, Pagamento, PedidoVenda
-from juridico.models import Movimentacao, Prazo, Processo, Publicacao, Tarefa
+from juridico.models import Audiencia, Movimentacao, Prazo, Processo, Publicacao, Tarefa
 from produtos.models import Produto
 
 
@@ -34,6 +34,12 @@ class ERPModelForm(forms.ModelForm):
         for field in self.fields.values():
             if isinstance(field.widget, forms.CheckboxInput):
                 field.widget.attrs["class"] = "form-checkbox"
+            elif isinstance(field, forms.DateTimeField):
+                field.widget = forms.DateTimeInput(
+                    attrs={"type": "datetime-local", "class": "form-control"},
+                    format="%Y-%m-%dT%H:%M",
+                )
+                field.input_formats = ["%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M", "%d/%m/%Y %H:%M"]
             elif isinstance(field, forms.DateField):
                 field.widget.input_type = "date"
                 field.widget.attrs["class"] = "form-control"
@@ -204,6 +210,21 @@ class PublicacaoForm(ERPModelForm):
             "publicada_em",
             "urgente",
             "processada",
+        )
+
+
+class AudienciaForm(ERPModelForm):
+    class Meta:
+        model = Audiencia
+        fields = (
+            "processo",
+            "titulo",
+            "data_hora",
+            "modalidade",
+            "local",
+            "responsavel",
+            "status",
+            "observacoes",
         )
 
 

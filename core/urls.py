@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import ai_views, views
 
 urlpatterns = [
     path("", views.home, name="home"),
@@ -10,6 +10,11 @@ urlpatterns = [
         views.visual_identity,
         name="visual-identity",
     ),
+    path("administracao/ia/", ai_views.ai_settings, name="ai-settings"),
+    path("administracao/ia/desconectar/", ai_views.ai_settings_remove, name="ai-settings-remove"),
+    path("assistente/", ai_views.assistant, name="ai-assistant"),
+    path("app/publicacoes/<int:pk>/ia/", ai_views.publicacao_ai, name="publicacao-ai"),
+    path("app/processos/<int:pk>/ia/", ai_views.processo_ai, name="processo-ai"),
     path("identidade/logo/", views.company_logo, name="company-logo"),
     path(
         "app/orcamentos/<int:proposal_id>/gerar-pedido/",

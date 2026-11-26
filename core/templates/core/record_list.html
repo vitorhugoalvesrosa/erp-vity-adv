@@ -24,7 +24,7 @@
                 <thead>
                     <tr>
                         {% for column in columns %}<th>{{ column }}</th>{% endfor %}
-                        {% if can_change or can_delete or can_generate_order or can_generate_contract or active_module == "contratos" %}<th class="actions-col"><span class="visually-hidden">Ações</span></th>{% endif %}
+                        {% if can_change or can_delete or can_generate_order or can_generate_contract or active_module == "contratos" or active_module == "processos" or active_module == "publicacoes" %}<th class="actions-col"><span class="visually-hidden">Ações</span></th>{% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -35,10 +35,11 @@
                                     {% if cell.kind == "badge" %}<span class="badge badge-{{ cell.tone }}">{{ cell.value }}</span>
                                     {% elif cell.kind == "currency" %}R$ {{ cell.value|floatformat:"2g" }}
                                     {% elif cell.kind == "date" %}{{ cell.value|date:"d/m/Y"|default:"—" }}
+                                    {% elif cell.kind == "datetime" %}{{ cell.value|date:"d/m/Y H:i"|default:"—" }}
                                     {% else %}{{ cell.value|default:"—" }}{% endif %}
                                 </td>
                             {% endfor %}
-                            {% if can_change or can_delete or can_generate_order or can_generate_contract or active_module == "contratos" %}
+                            {% if can_change or can_delete or can_generate_order or can_generate_contract or active_module == "contratos" or active_module == "processos" or active_module == "publicacoes" %}
                                 <td class="cell-actions">
                                     <div class="row-actions">
                                         {% if active_module == "propostas" and row.can_generate_order %}
@@ -52,6 +53,12 @@
                                         {% endif %}
                                         {% if active_module == "pedidos" and row.can_generate_contract %}
                                             <a class="text-link" href="{% url 'record-create' module='contratos' %}?pedido_id={{ row.object.pk }}">Gerar contrato</a>
+                                        {% endif %}
+                                        {% if active_module == "processos" %}
+                                            <a class="text-link" href="{% url 'processo-ai' pk=row.object.pk %}"><svg class="icon" aria-hidden="true"><use href="#icon-spark"></use></svg> Ficha</a>
+                                        {% endif %}
+                                        {% if active_module == "publicacoes" %}
+                                            <a class="text-link" href="{% url 'publicacao-ai' pk=row.object.pk %}"><svg class="icon" aria-hidden="true"><use href="#icon-spark"></use></svg> {% if row.object.analisada_em %}Ver análise{% else %}Analisar{% endif %}</a>
                                         {% endif %}
                                         {% if active_module == "contratos" %}
                                             <a class="text-link" href="{% url 'contract-pdf' pk=row.object.pk %}" target="_blank" rel="noopener">PDF para impressão</a>
@@ -68,7 +75,7 @@
                         </tr>
                     {% empty %}
                         <tr>
-                            <td class="cell-full" colspan="{% if can_change or can_delete or can_generate_order or can_generate_contract or active_module == 'contratos' %}{{ columns|length|add:1 }}{% else %}{{ columns|length }}{% endif %}">
+                            <td class="cell-full" colspan="{% if can_change or can_delete or can_generate_order or can_generate_contract or active_module == 'contratos' or active_module == 'processos' or active_module == 'publicacoes' %}{{ columns|length|add:1 }}{% else %}{{ columns|length }}{% endif %}">
                                 <div class="empty-state">
                                     <span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#icon-{% if search %}search{% else %}inbox{% endif %}"></use></svg></span>
                                     <strong>{% if search %}Nada encontrado{% else %}Nenhum registro cadastrado{% endif %}</strong>
