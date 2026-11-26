@@ -66,7 +66,7 @@ class CompanyProfile(models.Model):
     primary_color = models.CharField(
         "Cor principal",
         max_length=7,
-        default="#5968E8",
+        default="#0B7A83",
         validators=[
             RegexValidator(r"^#[0-9A-Fa-f]{6}$", "Informe uma cor hexadecimal.")
         ],
@@ -74,7 +74,7 @@ class CompanyProfile(models.Model):
     sidebar_color = models.CharField(
         "Cor do menu lateral",
         max_length=7,
-        default="#171D35",
+        default="#0D3B45",
         validators=[
             RegexValidator(r"^#[0-9A-Fa-f]{6}$", "Informe uma cor hexadecimal.")
         ],
@@ -82,7 +82,7 @@ class CompanyProfile(models.Model):
     accent_color = models.CharField(
         "Cor de destaque",
         max_length=7,
-        default="#36B89B",
+        default="#F08A4B",
         validators=[RegexValidator(r"^#[0-9A-Fa-f]{6}$", "Informe uma cor hexadecimal.")],
     )
     created_at = models.DateTimeField(auto_now_add=True)

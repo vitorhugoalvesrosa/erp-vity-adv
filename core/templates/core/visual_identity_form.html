@@ -10,7 +10,7 @@
         <a class="button button-secondary" href="{% url 'admin-settings' %}">Voltar à administração</a>
     </header>
 
-    <section class="branding-preview" style="--preview-primary: {{ company_profile.primary_color|default:'#5968E8' }}; --preview-sidebar: {{ sidebar_color }}; --preview-accent: {{ company_profile.accent_color|default:'#36B89B' }}" aria-label="Prévia das cores">
+    <section class="branding-preview" style="--preview-primary: {{ company_profile.primary_color|default:'#0B7A83' }}; --preview-sidebar: {{ sidebar_color }}; --preview-accent: {{ company_profile.accent_color|default:'#F08A4B' }}" aria-label="Prévia das cores">
         <div class="branding-preview-sidebar">
             <span class="branding-preview-mark">{{ company_display_name|slice:":1"|upper }}</span>
             <strong>{{ company_display_name }}</strong>
