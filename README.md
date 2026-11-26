@@ -166,18 +166,29 @@ Recursos (cada um pode ser ligado ou desligado na mesma tela):
 
 O **limite mensal de tokens** pausa a IA quando atingido. O ERP registra apenas o consumo (recurso, usuário, modelo e tokens), nunca o conteúdo enviado. Prazos sugeridos pela IA são estimativas: confira sempre a contagem em dias úteis.
 
-## Roadmap (referência SisJud)
+## Peças, kanban, timesheet e atendimentos
 
-Entregue na fase 1: conexão de IA, análise de publicações, resumo de processos, assistente jurídico, audiências e "Resumo do dia" na home.
+- **Peças com IA** (`/pecas/`): petição inicial cível, reclamação trabalhista, contestação, réplica, especificação de provas, apelação, embargos de declaração, agravo de instrumento e outras. A minuta usa os fatos informados e os dados do processo vinculado, deixa marcadores como `[NOME DO AUTOR]` onde faltar informação, pode ser editada e baixada em `.docx` (Times New Roman 12, justificado, espaçamento 1,5).
+- **Quadro de tarefas** (`/tarefas/quadro/`): colunas A fazer, Fazendo e Concluída, com arrastar e soltar e filtro Minhas/Todas.
+- **Timesheet com cronômetro**: o botão "Timesheet" no topo conta o tempo mesmo trocando de página; ao parar, abre o lançamento de horas preenchido (e com o processo, se estiver numa ficha de processo).
+- **Honorários** (fixo, mensal, êxito em %, por hora) e **despesas** por processo, com totais na ficha do processo.
+- **Atendimentos**: registro de conversas com o cliente; "Converter em processo" abre o cadastro preenchido e vincula o atendimento.
+- **Publicações**: tratar, descartar ou reabrir, com indicadores de não tratadas, urgentes, tratadas e descartadas no dia.
+
+## Roadmap (referência SisJud e Astrea)
+
+Entregue: conexão de IA, análise de publicações, resumo de processos, assistente jurídico, peças com IA, audiências, "Resumo do dia", kanban, timesheet, honorários, despesas, atendimentos e triagem de publicações.
 
 Próximas fases sugeridas:
 
-1. **Tarefas e prazos**: tipo de prazo (fatal/interno/livre), contagem em dias úteis com feriados, kanban, recorrência e etiquetas.
+1. **Tarefas e prazos**: tipo de prazo (fatal/interno/livre), contagem em dias úteis com feriados, recorrência, etiquetas e listas.
 2. **Processos**: filtros rápidos (vencidos, hoje, semana, sem movimentação), fases processuais, apensos e subclientes.
 3. **Captura automática**: publicações por OAB e importação via ComunicA/DataJud, com cadastro do caso a partir da publicação.
 4. **Financeiro jurídico**: honorários, parcerias com percentual, boletos (Inter/Asaas), NFS-e e régua de cobrança.
 5. **Documentos**: modelos com dados do caso, GED e assinatura digital.
-6. **Gestão**: auditoria, permissões por módulo, notificações e construtor de relatórios.
+6. **Gestão**: auditoria, permissões por usuário (financeiro, honorários, exclusão), 2FA, central de alertas, indicadores com gráficos e construtor de relatórios.
+7. **Relacionamento**: cadastro completo de contatos (documentos, dados bancários e Pix), mesclagem de duplicados e portal do cliente.
+8. **Faturamento**: faturas por cliente somando honorários, despesas e timesheet, com retenção de PCC/IRRF.
 
 ## Integrações judiciais
 

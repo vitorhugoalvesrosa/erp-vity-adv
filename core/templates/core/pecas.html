@@ -1,0 +1,64 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Jurídico</p>
+            <h1>Peças com IA</h1>
+            <p>Gere minutas de petições, contestações e recursos a partir dos fatos e do processo. Toda minuta deve ser revisada pelo advogado.</p>
+        </div>
+        {% if perms.juridico.add_pecajuridica %}
+            <a class="button" href="{% url 'peca-nova' %}"><svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg> Nova peça</a>
+        {% endif %}
+    </header>
+
+    {% if not ai_enabled %}
+        <div class="alert-strip" role="status">
+            <span><strong>IA não conectada.</strong> {% if user.is_superuser %}Conecte em <a class="text-link" href="{% url 'ai-settings' %}">Administração → Inteligência artificial</a> para gerar minutas automaticamente.{% else %}Peça a um administrador para conectar a conta de IA.{% endif %}</span>
+        </div>
+    {% endif %}
+
+    {% if perms.juridico.add_pecajuridica %}
+        <section class="peca-grid" aria-label="Começar por tipo de peça">
+            {% for value, label in tipos %}
+                <a class="peca-type" href="{% url 'peca-nova' %}?tipo={{ value }}"><svg class="icon" aria-hidden="true"><use href="#icon-pen"></use></svg> {{ label }}</a>
+            {% endfor %}
+        </section>
+    {% endif %}
+
+    <form class="search-bar" method="get" role="search">
+        <svg class="icon search-icon" aria-hidden="true"><use href="#icon-search"></use></svg>
+        <input class="form-control" type="search" name="q" value="{{ search }}" placeholder="Buscar por título ou processo…" aria-label="Buscar peças">
+        <button class="button button-secondary" type="submit">Buscar</button>
+    </form>
+
+    <section class="panel">
+        <div class="table-wrap">
+            <table class="data-table data-table-stack">
+                <thead><tr><th>Peça</th><th>Tipo</th><th>Processo</th><th>Autor</th><th>Atualizada</th></tr></thead>
+                <tbody>
+                    {% for peca in page_obj %}
+                        <tr>
+                            <td data-label="Peça"><a class="text-link" href="{% url 'peca-detalhe' pk=peca.pk %}">{{ peca.titulo }}</a></td>
+                            <td data-label="Tipo"><span class="badge badge-info">{{ peca.get_tipo_display }}</span></td>
+                            <td data-label="Processo">{{ peca.processo.numero_cnj|default:"—" }}</td>
+                            <td data-label="Autor">{{ peca.criado_por|default:"—" }}</td>
+                            <td class="cell-date" data-label="Atualizada">{{ peca.atualizada_em|date:"d/m/Y H:i" }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td class="cell-full" colspan="5"><div class="empty-state"><span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#icon-pen"></use></svg></span><strong>{% if search %}Nada encontrado{% else %}Nenhuma peça ainda{% endif %}</strong><p>Escolha um tipo de peça acima para começar.</p></div></td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if page_obj.paginator.num_pages > 1 %}
+            <footer class="pagination">
+                <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                <div class="pagination-actions">
+                    {% if page_obj.has_previous %}<a class="pagination-link" href="?q={{ search|urlencode }}&page={{ page_obj.previous_page_number }}">Anterior</a>{% endif %}
+                    {% if page_obj.has_next %}<a class="pagination-link" href="?q={{ search|urlencode }}&page={{ page_obj.next_page_number }}">Próxima</a>{% endif %}
+                </div>
+            </footer>
+        {% endif %}
+    </section>
+{% endblock %}

@@ -286,6 +286,7 @@ class AIConfigurationForm(forms.ModelForm):
             "enable_publications",
             "enable_case_summary",
             "enable_assistant",
+            "enable_drafts",
             "enable_whatsapp",
         )
         widgets = {

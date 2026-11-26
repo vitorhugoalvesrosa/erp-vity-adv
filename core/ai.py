@@ -91,6 +91,7 @@ def feature_enabled(feature):
         AIUsageLog.Feature.PUBLICATION: config.enable_publications,
         AIUsageLog.Feature.CASE_SUMMARY: config.enable_case_summary,
         AIUsageLog.Feature.ASSISTANT: config.enable_assistant,
+        AIUsageLog.Feature.DRAFT: config.enable_drafts,
         AIUsageLog.Feature.WHATSAPP: config.enable_whatsapp,
     }
     return flags.get(feature, True)
@@ -209,7 +210,7 @@ def _dispatch(provider, api_key, model, system, messages, **options):
 
 
 def _call_anthropic(api_key, model, system, messages, *, json_schema, max_tokens, effort):
-    client = anthropic.Anthropic(api_key=api_key, timeout=REQUEST_TIMEOUT * 2, max_retries=2)
+    client = anthropic.Anthropic(api_key=api_key, timeout=REQUEST_TIMEOUT * 4, max_retries=1)
     output_config = {"effort": effort}
     if json_schema:
         output_config["format"] = {"type": "json_schema", "schema": json_schema}
@@ -220,14 +221,20 @@ def _call_anthropic(api_key, model, system, messages, *, json_schema, max_tokens
         "messages": messages,
         "output_config": output_config,
     }
+    # Respostas longas vão por streaming para não estourar o timeout HTTP.
+    use_stream = max_tokens > 16000
     try:
         if model in SERVER_FALLBACK_MODELS:
             # Se o modelo recusar por engano, o servidor refaz com outro modelo.
-            response = client.beta.messages.create(
-                betas=["server-side-fallback-2026-07-01"],
-                fallbacks="default",
-                **params,
-            )
+            fallback = {"betas": ["server-side-fallback-2026-07-01"], "fallbacks": "default"}
+            if use_stream:
+                with client.beta.messages.stream(**fallback, **params) as stream:
+                    response = stream.get_final_message()
+            else:
+                response = client.beta.messages.create(**fallback, **params)
+        elif use_stream:
+            with client.messages.stream(**params) as stream:
+                response = stream.get_final_message()
         else:
             response = client.messages.create(**params)
     except anthropic.AuthenticationError as exc:
@@ -248,7 +255,7 @@ def _call_anthropic(api_key, model, system, messages, *, json_schema, max_tokens
     if response.stop_reason == "refusal":
         raise AIError("O modelo recusou este pedido. Reformule a solicitação.")
     text = "".join(block.text for block in response.content if block.type == "text").strip()
-    if response.stop_reason == "max_tokens" and json_schema:
+    if response.stop_reason == "max_tokens" and (json_schema or not text):
         raise AIError("A resposta da IA ficou incompleta. Tente novamente.")
     usage = response.usage
     return AIResult(
@@ -296,7 +303,7 @@ def _call_openai_compatible(provider, api_key, model, system, messages, *, json_
     )
 
 
-def _openai_request(url, api_key, *, payload=None, method="POST", timeout=REQUEST_TIMEOUT):
+def _openai_request(url, api_key, *, payload=None, method="POST", timeout=REQUEST_TIMEOUT * 4):
     request = urllib.request.Request(
         url,
         data=json.dumps(payload).encode("utf-8") if payload is not None else None,

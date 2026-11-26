@@ -1,5 +1,9 @@
+from decimal import Decimal
+
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 
 from crm.models import Conta
 
@@ -175,7 +179,9 @@ class Publicacao(models.Model):
     publicada_em = models.DateField("Data da publicação")
     capturada_em = models.DateTimeField(auto_now_add=True)
     urgente = models.BooleanField("Urgente", default=False)
-    processada = models.BooleanField("Processada", default=False)
+    processada = models.BooleanField("Tratada", default=False)
+    descartada = models.BooleanField("Descartada", default=False)
+    tratada_em = models.DateTimeField("Tratada/descartada em", null=True, blank=True, editable=False)
 
     class ClassificacaoIA(models.TextChoices):
         INTIMACAO = "intimacao", "Intimação"
@@ -289,3 +295,198 @@ class IntegracaoTribunal(models.Model):
 
     def __str__(self):
         return f"{self.nome} ({self.uf})"
+
+
+class Atendimento(models.Model):
+    class Status(models.TextChoices):
+        ABERTO = "aberto", "Em andamento"
+        CONVERTIDO = "convertido", "Convertido em processo"
+        ENCERRADO = "encerrado", "Encerrado"
+
+    cliente = models.ForeignKey(Conta, on_delete=models.PROTECT, related_name="atendimentos", verbose_name="Cliente")
+    assunto = models.CharField("Assunto", max_length=255)
+    data = models.DateTimeField("Data do atendimento", default=timezone.now)
+    canal = models.CharField(
+        "Canal",
+        max_length=20,
+        choices=[
+            ("presencial", "Presencial"),
+            ("telefone", "Telefone"),
+            ("video", "Videochamada"),
+            ("whatsapp", "WhatsApp"),
+            ("email", "E-mail"),
+        ],
+        default="presencial",
+    )
+    relato = models.TextField("Relato do atendimento", blank=True)
+    responsavel = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="atendimentos_responsavel",
+        verbose_name="Responsável",
+    )
+    processo = models.ForeignKey(
+        Processo,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="atendimentos",
+        verbose_name="Processo vinculado",
+    )
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.ABERTO)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-data"]
+        verbose_name = "Atendimento"
+        verbose_name_plural = "Atendimentos"
+
+    def __str__(self):
+        return f"{self.assunto} — {self.cliente}"
+
+
+class Timesheet(models.Model):
+    processo = models.ForeignKey(
+        Processo,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="timesheets",
+        verbose_name="Processo",
+    )
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="timesheets",
+        verbose_name="Profissional",
+    )
+    data = models.DateField("Data", default=timezone.localdate)
+    minutos = models.PositiveIntegerField("Duração (minutos)")
+    descricao = models.CharField("Atividade", max_length=255)
+    valor_hora = models.DecimalField("Valor da hora", max_digits=10, decimal_places=2, default=0)
+    faturado = models.BooleanField("Faturado", default=False)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-data", "-criado_em"]
+        verbose_name = "Timesheet"
+        verbose_name_plural = "Timesheets"
+
+    def __str__(self):
+        return f"{self.descricao} ({self.duracao})"
+
+    @property
+    def duracao(self):
+        horas, minutos = divmod(self.minutos, 60)
+        return f"{horas}h{minutos:02d}"
+
+    @property
+    def valor(self):
+        return (self.valor_hora * self.minutos / 60).quantize(Decimal("0.01"))
+
+
+class Honorario(models.Model):
+    class Tipo(models.TextChoices):
+        FIXO = "fixo", "Fixo"
+        MENSAL = "mensal", "Mensal"
+        EXITO = "exito", "Êxito (%)"
+        HORA = "hora", "Por hora"
+
+    class Status(models.TextChoices):
+        A_FATURAR = "a_faturar", "A faturar"
+        FATURADO = "faturado", "Faturado"
+        RECEBIDO = "recebido", "Recebido"
+        CANCELADO = "cancelado", "Cancelado"
+
+    processo = models.ForeignKey(Processo, on_delete=models.CASCADE, related_name="honorarios", verbose_name="Processo")
+    descricao = models.CharField("Descrição", max_length=255)
+    tipo = models.CharField("Tipo", max_length=10, choices=Tipo.choices, default=Tipo.FIXO)
+    valor = models.DecimalField("Valor", max_digits=12, decimal_places=2, default=0)
+    percentual_exito = models.DecimalField(
+        "Percentual de êxito", max_digits=5, decimal_places=2, null=True, blank=True,
+        help_text="Para honorário de êxito: percentual sobre o proveito econômico.",
+    )
+    vencimento = models.DateField("Vencimento", null=True, blank=True)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.A_FATURAR)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["vencimento", "-criado_em"]
+        verbose_name = "Honorário"
+        verbose_name_plural = "Honorários"
+
+    def __str__(self):
+        return f"{self.descricao} — {self.processo.numero_cnj}"
+
+    def clean(self):
+        super().clean()
+        if self.tipo == self.Tipo.EXITO and not self.percentual_exito:
+            raise ValidationError({"percentual_exito": "Informe o percentual do honorário de êxito."})
+        if self.percentual_exito is not None and not (0 < self.percentual_exito <= 100):
+            raise ValidationError({"percentual_exito": "O percentual deve estar entre 0 e 100."})
+
+
+class Despesa(models.Model):
+    class Status(models.TextChoices):
+        A_REEMBOLSAR = "a_reembolsar", "A reembolsar"
+        REEMBOLSADA = "reembolsada", "Reembolsada"
+        NAO_REEMBOLSAVEL = "nao_reembolsavel", "Não reembolsável"
+
+    processo = models.ForeignKey(Processo, on_delete=models.CASCADE, related_name="despesas", verbose_name="Processo")
+    descricao = models.CharField("Descrição", max_length=255, help_text="Custas, diligências, cópias, deslocamento…")
+    valor = models.DecimalField("Valor", max_digits=12, decimal_places=2)
+    data = models.DateField("Data", default=timezone.localdate)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.A_REEMBOLSAR)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-data", "-criado_em"]
+        verbose_name = "Despesa"
+        verbose_name_plural = "Despesas"
+
+    def __str__(self):
+        return f"{self.descricao} — R$ {self.valor}"
+
+
+class PecaJuridica(models.Model):
+    class Tipo(models.TextChoices):
+        PETICAO_INICIAL = "peticao_inicial", "Petição inicial cível"
+        RECLAMACAO_TRABALHISTA = "reclamacao_trabalhista", "Reclamação trabalhista"
+        CONTESTACAO = "contestacao", "Contestação"
+        REPLICA = "replica", "Réplica"
+        ESPECIFICACAO_PROVAS = "especificacao_provas", "Especificação de provas"
+        APELACAO = "apelacao", "Apelação"
+        EMBARGOS_DECLARACAO = "embargos_declaracao", "Embargos de declaração"
+        AGRAVO_INSTRUMENTO = "agravo_instrumento", "Agravo de instrumento"
+        OUTRA = "outra", "Outra peça"
+
+    tipo = models.CharField("Tipo de peça", max_length=30, choices=Tipo.choices)
+    titulo = models.CharField("Título", max_length=255)
+    processo = models.ForeignKey(
+        Processo,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pecas",
+        verbose_name="Processo",
+    )
+    instrucoes = models.TextField("Fatos e instruções")
+    conteudo = models.TextField("Conteúdo", blank=True)
+    gerada_por_ia = models.BooleanField(default=True, editable=False)
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="pecas_criadas",
+        editable=False,
+    )
+    criada_em = models.DateTimeField(auto_now_add=True)
+    atualizada_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-atualizada_em"]
+        verbose_name = "Peça jurídica"
+        verbose_name_plural = "Peças jurídicas"
+
+    def __str__(self):
+        return self.titulo

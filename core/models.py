@@ -178,6 +178,7 @@ class AIConfiguration(models.Model):
     enable_publications = models.BooleanField("Analisar publicações", default=True)
     enable_case_summary = models.BooleanField("Resumo de processos", default=True)
     enable_assistant = models.BooleanField("Assistente jurídico", default=True)
+    enable_drafts = models.BooleanField("Criação de peças", default=True)
     enable_whatsapp = models.BooleanField("Atendimento inicial no WhatsApp", default=False)
     last_test_at = models.DateTimeField(null=True, blank=True, editable=False)
     last_test_ok = models.BooleanField(default=False, editable=False)
@@ -201,6 +202,7 @@ class AIUsageLog(models.Model):
         PUBLICATION = "publicacao", "Análise de publicação"
         CASE_SUMMARY = "resumo_processo", "Resumo de processo"
         ASSISTANT = "assistente", "Assistente jurídico"
+        DRAFT = "peca", "Criação de peça"
         WHATSAPP = "whatsapp", "Atendimento WhatsApp"
         TEST = "teste", "Teste de conexão"
 

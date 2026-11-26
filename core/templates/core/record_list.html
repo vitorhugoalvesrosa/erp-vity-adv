@@ -12,7 +12,23 @@
         {% endif %}
     </header>
 
+    {% if publication_kpis %}
+        <section class="kpi-strip" aria-label="Indicadores de publicações">
+            <a class="kpi {% if status_filter == 'pendentes' %}is-active{% endif %}" href="?status=pendentes"><span>Não tratadas</span><strong class="num">{{ publication_kpis.nao_tratadas }}</strong></a>
+            <a class="kpi kpi-danger" href="?status=pendentes&q="><span>Urgentes pendentes</span><strong class="num">{{ publication_kpis.urgentes }}</strong></a>
+            <a class="kpi {% if status_filter == 'tratadas' %}is-active{% endif %}" href="?status=tratadas"><span>Tratadas hoje</span><strong class="num">{{ publication_kpis.tratadas_hoje }}</strong></a>
+            <a class="kpi {% if status_filter == 'descartadas' %}is-active{% endif %}" href="?status=descartadas"><span>Descartadas hoje</span><strong class="num">{{ publication_kpis.descartadas_hoje }}</strong></a>
+        </section>
+    {% endif %}
+    {% if active_module == "tarefas" %}
+        <nav class="segmented" aria-label="Visualização">
+            <a class="is-active" href="{% url 'record-list' module='tarefas' %}">Lista</a>
+            <a href="{% url 'kanban' %}">Quadro</a>
+        </nav>
+    {% endif %}
+
     <form class="search-bar" method="get" role="search">
+        {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
         <svg class="icon search-icon" aria-hidden="true"><use href="#icon-search"></use></svg>
         <input class="form-control" type="search" name="q" value="{{ search }}" placeholder="Buscar em {{ module.title|lower }}..." aria-label="Buscar registros">
         <button class="button button-secondary" type="submit">Buscar</button>
@@ -24,7 +40,7 @@
                 <thead>
                     <tr>
                         {% for column in columns %}<th>{{ column }}</th>{% endfor %}
-                        {% if can_change or can_delete or can_generate_order or can_generate_contract or active_module == "contratos" or active_module == "processos" or active_module == "publicacoes" %}<th class="actions-col"><span class="visually-hidden">Ações</span></th>{% endif %}
+                        {% if can_change or can_delete or can_generate_order or can_generate_contract or active_module == "contratos" or active_module == "processos" or active_module == "publicacoes" or active_module == "atendimentos" %}<th class="actions-col"><span class="visually-hidden">Ações</span></th>{% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -39,7 +55,7 @@
                                     {% else %}{{ cell.value|default:"—" }}{% endif %}
                                 </td>
                             {% endfor %}
-                            {% if can_change or can_delete or can_generate_order or can_generate_contract or active_module == "contratos" or active_module == "processos" or active_module == "publicacoes" %}
+                            {% if can_change or can_delete or can_generate_order or can_generate_contract or active_module == "contratos" or active_module == "processos" or active_module == "publicacoes" or active_module == "atendimentos" %}
                                 <td class="cell-actions">
                                     <div class="row-actions">
                                         {% if active_module == "propostas" and row.can_generate_order %}
@@ -60,6 +76,9 @@
                                         {% if active_module == "publicacoes" %}
                                             <a class="text-link" href="{% url 'publicacao-ai' pk=row.object.pk %}"><svg class="icon" aria-hidden="true"><use href="#icon-spark"></use></svg> {% if row.object.analisada_em %}Ver análise{% else %}Analisar{% endif %}</a>
                                         {% endif %}
+                                        {% if active_module == "atendimentos" and row.object.status != "convertido" and perms.juridico.add_processo %}
+                                            <a class="text-link" href="{% url 'atendimento-converter' pk=row.object.pk %}">Converter em processo</a>
+                                        {% endif %}
                                         {% if active_module == "contratos" %}
                                             <a class="text-link" href="{% url 'contract-pdf' pk=row.object.pk %}" target="_blank" rel="noopener">PDF para impressão</a>
                                         {% endif %}
@@ -75,7 +94,7 @@
                         </tr>
                     {% empty %}
                         <tr>
-                            <td class="cell-full" colspan="{% if can_change or can_delete or can_generate_order or can_generate_contract or active_module == 'contratos' or active_module == 'processos' or active_module == 'publicacoes' %}{{ columns|length|add:1 }}{% else %}{{ columns|length }}{% endif %}">
+                            <td class="cell-full" colspan="{% if can_change or can_delete or can_generate_order or can_generate_contract or active_module == 'contratos' or active_module == 'processos' or active_module == 'publicacoes' or active_module == 'atendimentos' %}{{ columns|length|add:1 }}{% else %}{{ columns|length }}{% endif %}">
                                 <div class="empty-state">
                                     <span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#icon-{% if search %}search{% else %}inbox{% endif %}"></use></svg></span>
                                     <strong>{% if search %}Nada encontrado{% else %}Nenhum registro cadastrado{% endif %}</strong>
@@ -91,8 +110,8 @@
             <footer class="pagination">
                 <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
                 <div class="pagination-actions">
-                    <a class="pagination-link {% if not previous_page %}is-disabled{% endif %}" href="?q={{ search|urlencode }}&page={{ previous_page|default:1 }}">Anterior</a>
-                    <a class="pagination-link {% if not next_page %}is-disabled{% endif %}" href="?q={{ search|urlencode }}&page={{ next_page|default:page_obj.paginator.num_pages }}">Próxima</a>
+                    <a class="pagination-link {% if not previous_page %}is-disabled{% endif %}" href="?q={{ search|urlencode }}&status={{ status_filter|urlencode }}&page={{ previous_page|default:1 }}">Anterior</a>
+                    <a class="pagination-link {% if not next_page %}is-disabled{% endif %}" href="?q={{ search|urlencode }}&status={{ status_filter|urlencode }}&page={{ next_page|default:page_obj.paginator.num_pages }}">Próxima</a>
                 </div>
             </footer>
         {% endif %}

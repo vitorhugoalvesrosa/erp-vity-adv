@@ -2,7 +2,12 @@ from django.contrib import admin
 
 from core.admin_site import erp_admin_site
 from .models import (
+    Atendimento,
     Audiencia,
+    Despesa,
+    Honorario,
+    PecaJuridica,
+    Timesheet,
     IntegracaoTribunal,
     Movimentacao,
     Prazo,
@@ -63,3 +68,35 @@ class AudienciaAdmin(admin.ModelAdmin):
 class IntegracaoTribunalAdmin(admin.ModelAdmin):
     list_display = ("nome", "provider", "uf", "tribunal", "ativo", "ultima_sincronizacao")
     list_filter = ("provider", "uf", "ativo")
+
+
+@admin.register(Atendimento, site=erp_admin_site)
+class AtendimentoAdmin(admin.ModelAdmin):
+    list_display = ("assunto", "cliente", "data", "canal", "responsavel", "status")
+    list_filter = ("status", "canal", "responsavel")
+    search_fields = ("assunto", "relato", "cliente__nome")
+
+
+@admin.register(Timesheet, site=erp_admin_site)
+class TimesheetAdmin(admin.ModelAdmin):
+    list_display = ("data", "descricao", "processo", "usuario", "minutos", "faturado")
+    list_filter = ("faturado", "usuario")
+
+
+@admin.register(Honorario, site=erp_admin_site)
+class HonorarioAdmin(admin.ModelAdmin):
+    list_display = ("descricao", "processo", "tipo", "valor", "vencimento", "status")
+    list_filter = ("tipo", "status")
+
+
+@admin.register(Despesa, site=erp_admin_site)
+class DespesaAdmin(admin.ModelAdmin):
+    list_display = ("data", "descricao", "processo", "valor", "status")
+    list_filter = ("status",)
+
+
+@admin.register(PecaJuridica, site=erp_admin_site)
+class PecaJuridicaAdmin(admin.ModelAdmin):
+    list_display = ("titulo", "tipo", "processo", "criado_por", "atualizada_em")
+    list_filter = ("tipo",)
+    search_fields = ("titulo", "instrucoes", "conteudo")

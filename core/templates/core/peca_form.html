@@ -1,0 +1,36 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Jurídico · Peças com IA</p>
+            <h1>Nova peça</h1>
+            <p>Quanto mais fatos, valores, datas e teses você informar, melhor a minuta. Se vincular um processo, a IA usa as movimentações, prazos e publicações dele.</p>
+        </div>
+    </header>
+
+    <section class="panel record-form-panel">
+        <form method="post" novalidate data-ai-form>
+            {% csrf_token %}
+            {% if form.non_field_errors %}<div class="form-error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+            <div class="form-grid">
+                {% for field in form %}
+                    <div class="form-field {% if field.name == 'instrucoes' %}is-wide{% endif %}">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {{ field.errors }}
+                        {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+            <p class="ai-disclaimer">{% if ai_enabled %}A geração pode levar de 1 a 3 minutos. Não feche a página. A minuta deixa marcadores como [NOME DO AUTOR] onde faltarem dados.{% else %}A IA não está conectada: a peça será criada em branco para você redigir.{% endif %}</p>
+            <div class="form-actions">
+                <a class="button button-secondary" href="{% url 'pecas' %}">Cancelar</a>
+                <button class="button" type="submit" data-loading-text="Gerando minuta…">
+                    <svg class="icon" aria-hidden="true"><use href="#icon-spark"></use></svg>
+                    {% if ai_enabled %}Gerar minuta com IA{% else %}Criar peça{% endif %}
+                </button>
+            </div>
+        </form>
+    </section>
+{% endblock %}

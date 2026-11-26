@@ -1,0 +1,131 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Jurídico · Agenda e tarefas</p>
+            <h1>Quadro de tarefas</h1>
+            <p>Arraste os cartões entre as colunas para atualizar o andamento. Concluídas há mais de 14 dias saem do quadro.</p>
+        </div>
+        {% if perms.juridico.add_tarefa %}
+            <a class="button" href="{% url 'record-create' module='tarefas' %}"><svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg> Nova tarefa</a>
+        {% endif %}
+    </header>
+
+    <div class="kanban-toolbar">
+        <nav class="segmented" aria-label="Visualização">
+            <a href="{% url 'record-list' module='tarefas' %}">Lista</a>
+            <a class="is-active" href="{% url 'kanban' %}">Quadro</a>
+        </nav>
+        <form method="get" class="kanban-filter">
+            <nav class="segmented" aria-label="Escopo">
+                <a class="{% if escopo == 'minhas' %}is-active{% endif %}" href="?escopo=minhas">Minhas</a>
+                <a class="{% if escopo == 'todas' %}is-active{% endif %}" href="?escopo=todas">Todas</a>
+            </nav>
+            {% if escopo == "todas" %}
+                <input type="hidden" name="escopo" value="todas">
+                <select class="form-select" name="responsavel" aria-label="Responsável" onchange="this.form.submit()">
+                    <option value="">Todos os responsáveis</option>
+                    {% for usuario in usuarios %}
+                        <option value="{{ usuario.pk }}" {% if responsavel == usuario.pk|stringformat:"s" %}selected{% endif %}>{{ usuario.get_full_name|default:usuario.username }}</option>
+                    {% endfor %}
+                </select>
+            {% endif %}
+        </form>
+    </div>
+
+    <section class="kanban" data-kanban data-can-change="{{ can_change|yesno:'1,0' }}">
+        {% for coluna in colunas %}
+            <div class="kanban-column" data-status="{{ coluna.status }}">
+                <header class="kanban-column-header">
+                    <span>{{ coluna.titulo }}</span>
+                    <span class="kanban-count" data-count>{{ coluna.cards|length }}</span>
+                </header>
+                <div class="kanban-cards" data-dropzone>
+                    {% for tarefa in coluna.cards %}
+                        <article class="kanban-card" data-id="{{ tarefa.pk }}" data-move-url="{% url 'kanban-mover' pk=tarefa.pk %}" {% if can_change %}draggable="true"{% endif %}>
+                            <strong>{{ tarefa.titulo }}</strong>
+                            <div class="kanban-card-meta">
+                                <span class="badge badge-{% if tarefa.prioridade == 'urgente' %}danger{% elif tarefa.prioridade == 'alta' %}warning{% elif tarefa.prioridade == 'media' %}info{% else %}neutral{% endif %}">{{ tarefa.get_prioridade_display }}</span>
+                                {% if tarefa.vencimento %}
+                                    <span class="num {% if tarefa.vencimento < today and tarefa.status != 'concluida' %}is-late{% endif %}">
+                                        <svg class="icon icon-xs" aria-hidden="true"><use href="#icon-calendar"></use></svg>
+                                        {{ tarefa.vencimento|date:"d/m" }}
+                                    </span>
+                                {% endif %}
+                                {% if tarefa.processo %}<a class="text-link" href="{% url 'processo-ai' pk=tarefa.processo.pk %}">{{ tarefa.processo.numero_cnj|truncatechars:18 }}</a>{% endif %}
+                            </div>
+                            <div class="kanban-card-meta">
+                                <span>{{ tarefa.responsavel.get_full_name|default:tarefa.responsavel.username }}</span>
+                            </div>
+                            {% if can_change %}
+                                <form class="kanban-card-actions" method="post" action="{% url 'kanban-mover' pk=tarefa.pk %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    {% if not forloop.parentloop.first %}<button type="submit" name="status" value="{% if coluna.status == 'em_andamento' %}pendente{% else %}em_andamento{% endif %}" aria-label="Mover para a coluna anterior">←</button>{% else %}<span></span>{% endif %}
+                                    {% if not forloop.parentloop.last %}<button type="submit" name="status" value="{% if coluna.status == 'pendente' %}em_andamento{% else %}concluida{% endif %}" aria-label="Mover para a próxima coluna">→</button>{% endif %}
+                                </form>
+                            {% endif %}
+                        </article>
+                    {% empty %}
+                        <p class="kanban-empty" data-empty>Nenhuma tarefa</p>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+    </section>
+
+    <script>
+        (() => {
+            const board = document.querySelector("[data-kanban]");
+            if (!board || board.dataset.canChange !== "1") return;
+            const csrf = document.querySelector("input[name=csrfmiddlewaretoken]")?.value;
+            let dragged = null;
+            const refreshCounts = () => {
+                board.querySelectorAll(".kanban-column").forEach((column) => {
+                    const cards = column.querySelectorAll(".kanban-card").length;
+                    column.querySelector("[data-count]").textContent = cards;
+                    const empty = column.querySelector("[data-empty]");
+                    if (empty) empty.hidden = cards > 0;
+                });
+            };
+            board.addEventListener("dragstart", (event) => {
+                dragged = event.target.closest(".kanban-card");
+                if (!dragged) return;
+                dragged.classList.add("is-dragging");
+                event.dataTransfer.effectAllowed = "move";
+            });
+            board.addEventListener("dragend", () => {
+                dragged?.classList.remove("is-dragging");
+                board.querySelectorAll(".is-over").forEach((el) => el.classList.remove("is-over"));
+            });
+            board.querySelectorAll(".kanban-column").forEach((column) => {
+                column.addEventListener("dragover", (event) => { event.preventDefault(); column.classList.add("is-over"); });
+                column.addEventListener("dragleave", (event) => { if (!column.contains(event.relatedTarget)) column.classList.remove("is-over"); });
+                column.addEventListener("drop", async (event) => {
+                    event.preventDefault();
+                    column.classList.remove("is-over");
+                    if (!dragged || dragged.closest(".kanban-column") === column) return;
+                    const origin = dragged.parentElement;
+                    const card = dragged;
+                    column.querySelector("[data-dropzone]").prepend(card);
+                    refreshCounts();
+                    const body = new URLSearchParams({ status: column.dataset.status });
+                    try {
+                        const response = await fetch(card.dataset.moveUrl, {
+                            method: "POST",
+                            headers: { "X-CSRFToken": csrf, "X-Requested-With": "fetch", "Content-Type": "application/x-www-form-urlencoded" },
+                            body,
+                        });
+                        if (!response.ok) throw new Error();
+                        window.location.reload();
+                    } catch (error) {
+                        origin.prepend(card);
+                        refreshCounts();
+                        board.insertAdjacentHTML("beforebegin", '<div class="message error" role="alert">Não foi possível mover a tarefa. Tente novamente.</div>');
+                    }
+                });
+            });
+        })();
+    </script>
+{% endblock %}

@@ -5,7 +5,19 @@ from django.db import models
 
 from crm.models import Conta, Proposta
 from financeiro.models import Contrato, ContaReceber, Pagamento, PedidoVenda
-from juridico.models import Audiencia, Movimentacao, Prazo, Processo, Publicacao, Tarefa
+from juridico.models import (
+    Atendimento,
+    Audiencia,
+    Despesa,
+    Honorario,
+    Movimentacao,
+    PecaJuridica,
+    Prazo,
+    Processo,
+    Publicacao,
+    Tarefa,
+    Timesheet,
+)
 from produtos.models import Produto
 
 
@@ -226,6 +238,54 @@ class AudienciaForm(ERPModelForm):
             "status",
             "observacoes",
         )
+
+
+class AtendimentoForm(ERPModelForm):
+    class Meta:
+        model = Atendimento
+        fields = ("cliente", "assunto", "data", "canal", "responsavel", "processo", "status", "relato")
+
+
+class TimesheetForm(ERPModelForm):
+    class Meta:
+        model = Timesheet
+        fields = ("processo", "usuario", "data", "minutos", "descricao", "valor_hora", "faturado")
+
+
+class HonorarioForm(ERPModelForm):
+    class Meta:
+        model = Honorario
+        fields = ("processo", "descricao", "tipo", "valor", "percentual_exito", "vencimento", "status")
+
+
+class DespesaForm(ERPModelForm):
+    class Meta:
+        model = Despesa
+        fields = ("processo", "descricao", "valor", "data", "status")
+
+
+class PecaJuridicaForm(ERPModelForm):
+    class Meta:
+        model = PecaJuridica
+        fields = ("tipo", "titulo", "processo", "instrucoes")
+        widgets = {
+            "instrucoes": forms.Textarea(
+                attrs={
+                    "rows": 10,
+                    "placeholder": (
+                        "Descreva os fatos, o que o cliente quer, provas disponíveis, valores, "
+                        "datas e qualquer tese que deva ser usada."
+                    ),
+                }
+            )
+        }
+
+
+class PecaConteudoForm(ERPModelForm):
+    class Meta:
+        model = PecaJuridica
+        fields = ("titulo", "conteudo")
+        widgets = {"conteudo": forms.Textarea(attrs={"rows": 30, "class": "form-control peca-editor"})}
 
 
 class EmailNoticeForm(forms.Form):

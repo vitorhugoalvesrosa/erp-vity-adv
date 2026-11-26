@@ -12,14 +12,14 @@
             </p>
         </div>
         <div class="page-heading-actions">
-            {% if can_change and not publicacao.processada %}
-                <form method="post">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="processar">
-                    <button class="button button-secondary" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-check"></use></svg> Marcar como processada</button>
-                </form>
-            {% elif publicacao.processada %}
-                <span class="badge badge-success">Processada</span>
+            {% if can_change %}
+                {% if publicacao.processada or publicacao.descartada %}
+                    <span class="badge {% if publicacao.processada %}badge-success{% else %}badge-neutral{% endif %}">{% if publicacao.processada %}Tratada{% else %}Descartada{% endif %}{% if publicacao.tratada_em %} em {{ publicacao.tratada_em|date:"d/m H:i" }}{% endif %}</span>
+                    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="reabrir"><button class="button button-secondary" type="submit">Reabrir</button></form>
+                {% else %}
+                    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="processar"><button class="button button-secondary" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-check"></use></svg> Marcar como tratada</button></form>
+                    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="descartar"><button class="button button-secondary" type="submit">Descartar</button></form>
+                {% endif %}
             {% endif %}
             <a class="button button-secondary" href="{% url 'record-list' module='publicacoes' %}">Voltar</a>
         </div>

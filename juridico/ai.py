@@ -7,7 +7,7 @@ from django.utils import timezone
 from core.ai import generate
 from core.models import AIUsageLog
 
-from .models import Publicacao, Tarefa
+from .models import PecaJuridica, Publicacao, Tarefa
 
 MAX_CONTEXT_CHARS = 60000
 
@@ -222,3 +222,53 @@ def perguntar_assistente(pergunta, *, processo=None, historico=None, user=None):
         history=historico,
     )
     return result.text
+
+
+ORIENTACOES_PECA = {
+    PecaJuridica.Tipo.PETICAO_INICIAL: "Siga o art. 319 do CPC: endereçamento, qualificação das partes, fatos, fundamentos jurídicos, pedidos com especificações, valor da causa, provas e opção pela audiência de conciliação.",
+    PecaJuridica.Tipo.RECLAMACAO_TRABALHISTA: "Siga o art. 840 da CLT: endereçamento à Vara do Trabalho, qualificação, breve exposição dos fatos, pedidos certos, determinados e com indicação de valor.",
+    PecaJuridica.Tipo.CONTESTACAO: "Siga os arts. 335 a 342 do CPC: preliminares cabíveis (art. 337), impugnação específica dos fatos, fundamentos de direito e pedidos.",
+    PecaJuridica.Tipo.REPLICA: "Réplica à contestação (arts. 350 e 351 do CPC): rebata preliminares e fatos impeditivos, modificativos ou extintivos alegados.",
+    PecaJuridica.Tipo.ESPECIFICACAO_PROVAS: "Especifique as provas que se pretende produzir, justificando a pertinência de cada uma.",
+    PecaJuridica.Tipo.APELACAO: "Siga o art. 1.010 do CPC: interposição ao juízo de origem e razões ao tribunal, com exposição do fato e do direito, razões do pedido de reforma ou nulidade e pedido de nova decisão.",
+    PecaJuridica.Tipo.EMBARGOS_DECLARACAO: "Art. 1.022 do CPC: aponte de forma objetiva a obscuridade, contradição, omissão ou erro material da decisão.",
+    PecaJuridica.Tipo.AGRAVO_INSTRUMENTO: "Arts. 1.015 a 1.017 do CPC: verifique o cabimento, exponha fatos e direito, razões do pedido de reforma, pedido de efeito suspensivo ou tutela recursal se aplicável e relação das peças obrigatórias.",
+    PecaJuridica.Tipo.OUTRA: "Estruture a peça conforme o tipo descrito pelo advogado.",
+}
+
+
+def gerar_peca(peca, user=None):
+    """Gera a minuta da peça a partir das instruções e do processo vinculado."""
+    contexto = (
+        f"<processo>\n{contexto_processo(peca.processo)}\n</processo>\n\n"
+        if peca.processo
+        else "Peça sem processo vinculado no ERP.\n\n"
+    )
+    prompt = (
+        f"{contexto}"
+        f"Tipo de peça: {peca.get_tipo_display()}\n"
+        f"Orientação de estrutura: {ORIENTACOES_PECA.get(peca.tipo, '')}\n\n"
+        "<instrucoes_do_advogado>\n"
+        f"{peca.instrucoes[:MAX_CONTEXT_CHARS]}\n"
+        "</instrucoes_do_advogado>\n\n"
+        "Redija a minuta completa da peça em português jurídico formal, pronta para revisão. "
+        "Use títulos em markdown (## SEÇÃO) e parágrafos. Onde faltar uma informação "
+        "(nomes, endereços, documentos, valores, datas), deixe um marcador entre colchetes, "
+        "como [NOME DO AUTOR], em vez de inventar. Cite apenas dispositivos legais que você "
+        "tem segurança de existirem; não invente jurisprudência, números de julgados ou "
+        "súmulas. Termine com local, data e espaço para assinatura do advogado."
+    )
+    result = generate(
+        AIUsageLog.Feature.DRAFT,
+        prompt,
+        system=(
+            "Você é um advogado brasileiro experiente que redige minutas de peças processuais "
+            "para revisão do advogado responsável."
+        ),
+        user=user,
+        max_tokens=32000,
+        effort="high",
+    )
+    peca.conteudo = result.text
+    peca.save(update_fields=["conteudo", "atualizada_em"])
+    return peca

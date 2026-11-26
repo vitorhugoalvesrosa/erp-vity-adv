@@ -1,0 +1,84 @@
+{% extends "core/base.html" %}
+{% load ai_format %}
+
+{% block content %}
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Jurídico · Peças com IA · {{ peca.get_tipo_display }}</p>
+            <h1>{{ peca.titulo }}</h1>
+            <p>
+                {% if peca.processo %}<a class="text-link" href="{% url 'processo-ai' pk=peca.processo.pk %}">{{ peca.processo.numero_cnj }}</a> · {% endif %}
+                Atualizada em {{ peca.atualizada_em|date:"d/m/Y H:i" }}{% if peca.criado_por %} · por {{ peca.criado_por }}{% endif %}
+            </p>
+        </div>
+        <div class="page-heading-actions">
+            {% if peca.conteudo %}
+                <a class="button" href="{% url 'peca-docx' pk=peca.pk %}"><svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg> Baixar .docx</a>
+            {% endif %}
+            {% if can_change and ai_enabled %}
+                <form method="post" data-ai-form>
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="regenerar">
+                    <button class="button button-secondary" type="submit" data-loading-text="Gerando…"><svg class="icon" aria-hidden="true"><use href="#icon-spark"></use></svg> Gerar novamente</button>
+                </form>
+            {% endif %}
+            <a class="button button-secondary" href="{% url 'pecas' %}">Voltar</a>
+        </div>
+    </header>
+
+    <nav class="segmented peca-tabs" aria-label="Modo de exibição" role="tablist">
+        <a href="#" class="is-active" data-tab="leitura" role="tab" aria-selected="true">Leitura</a>
+        {% if can_change %}<a href="#" data-tab="edicao" role="tab" aria-selected="false">Editar</a>{% endif %}
+        <a href="#" data-tab="instrucoes" role="tab" aria-selected="false">Instruções usadas</a>
+    </nav>
+
+    <section data-panel="leitura">
+        {% if peca.conteudo %}
+            <article class="peca-document ai-output">{{ peca.conteudo|ai_markdown }}</article>
+            {% if peca.gerada_por_ia %}<p class="ai-disclaimer peca-disclaimer">Minuta gerada por IA. Confira fatos, dispositivos legais e preencha os marcadores entre colchetes antes de protocolar.</p>{% endif %}
+        {% else %}
+            <section class="panel empty-state"><strong>Peça sem conteúdo</strong><p>{% if can_change %}Use “Editar” para redigir{% if ai_enabled %} ou “Gerar novamente”{% endif %}.{% endif %}</p></section>
+        {% endif %}
+    </section>
+
+    {% if can_change %}
+        <section class="panel record-form-panel" data-panel="edicao" hidden>
+            <form method="post" novalidate>
+                {% csrf_token %}
+                <div class="form-grid">
+                    {% for field in form %}
+                        <div class="form-field is-wide">
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {{ field.errors }}
+                        </div>
+                    {% endfor %}
+                </div>
+                <p class="helptext">Use ## para títulos de seção e **texto** para negrito. A formatação é aplicada no .docx.</p>
+                <div class="form-actions"><button class="button" type="submit">Salvar peça</button></div>
+            </form>
+        </section>
+    {% endif %}
+
+    <section class="panel" data-panel="instrucoes" hidden>
+        <div class="ai-panel-body">{{ peca.instrucoes|linebreaks }}</div>
+    </section>
+
+    <script>
+        (() => {
+            const tabs = document.querySelectorAll("[data-tab]");
+            const show = (name) => {
+                tabs.forEach((tab) => {
+                    const active = tab.dataset.tab === name;
+                    tab.classList.toggle("is-active", active);
+                    tab.setAttribute("aria-selected", String(active));
+                });
+                document.querySelectorAll("[data-panel]").forEach((panel) => {
+                    panel.hidden = panel.dataset.panel !== name;
+                });
+            };
+            tabs.forEach((tab) => tab.addEventListener("click", (event) => { event.preventDefault(); show(tab.dataset.tab); }));
+            {% if form.errors %}show("edicao");{% endif %}
+        })();
+    </script>
+{% endblock %}

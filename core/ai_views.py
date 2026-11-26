@@ -143,11 +143,20 @@ def publicacao_ai(request, pk):
             else:
                 tarefa = criar_tarefa_sugerida(publicacao, request.user)
                 messages.success(request, f"Tarefa “{tarefa.titulo}” criada. Confira o vencimento.")
-        elif action == "processar":
+        elif action in ("processar", "descartar", "reabrir"):
             _require(request, "juridico.change_publicacao")
-            publicacao.processada = True
-            publicacao.save(update_fields=["processada"])
-            messages.success(request, "Publicação marcada como processada.")
+            publicacao.processada = action == "processar"
+            publicacao.descartada = action == "descartar"
+            publicacao.tratada_em = None if action == "reabrir" else timezone.now()
+            publicacao.save(update_fields=["processada", "descartada", "tratada_em"])
+            messages.success(
+                request,
+                {
+                    "processar": "Publicação marcada como tratada.",
+                    "descartar": "Publicação descartada.",
+                    "reabrir": "Publicação voltou para a fila de não tratadas.",
+                }[action],
+            )
         return redirect("publicacao-ai", pk=publicacao.pk)
 
     return render(
@@ -181,6 +190,24 @@ def processo_ai(request, pk):
         return redirect("processo-ai", pk=processo.pk)
 
     hoje = timezone.localdate()
+    timesheets = list(processo.timesheets.all())
+    honorarios = processo.honorarios.exclude(status="cancelado")
+    despesas = processo.despesas.all()
+
+    def soma(queryset, **filtros):
+        return queryset.filter(**filtros).aggregate(total=Sum("valor"))["total"] or 0
+
+    financeiro = {
+        "horas": sum(t.minutos for t in timesheets) / 60,
+        "timesheet_valor": sum(t.valor for t in timesheets),
+        "timesheet_a_faturar": sum(t.valor for t in timesheets if not t.faturado),
+        "honorarios_total": soma(honorarios),
+        "honorarios_a_faturar": soma(honorarios, status="a_faturar"),
+        "honorarios_recebidos": soma(honorarios, status="recebido"),
+        "despesas_total": soma(despesas),
+        "despesas_a_reembolsar": soma(despesas, status="a_reembolsar"),
+        "exito": honorarios.filter(tipo="exito").values_list("percentual_exito", flat=True),
+    }
     return render(
         request,
         "core/processo_ai.html",
@@ -189,6 +216,9 @@ def processo_ai(request, pk):
             "active_module": "processos",
             "processo": processo,
             "today": hoje,
+            "financeiro": financeiro,
+            "pecas": processo.pecas.all()[:5],
+            "atendimentos": processo.atendimentos.all()[:5],
             "movimentacoes": processo.movimentacoes.all()[:8],
             "prazos_abertos": processo.prazos.filter(status="aberto").order_by("data_vencimento")[:6],
             "audiencias": processo.audiencias.filter(data_hora__date__gte=hoje).order_by("data_hora")[:4],

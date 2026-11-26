@@ -25,7 +25,18 @@ from reportlab.platypus import Image, KeepTogether, Paragraph, SimpleDocTemplate
 
 from crm.models import Conta, Proposta
 from financeiro.models import Contrato, ContaReceber, Pagamento, PedidoVenda
-from juridico.models import Audiencia, Movimentacao, Prazo, Processo, Publicacao, Tarefa
+from juridico.models import (
+    Atendimento,
+    Audiencia,
+    Despesa,
+    Honorario,
+    Movimentacao,
+    Prazo,
+    Processo,
+    Publicacao,
+    Tarefa,
+    Timesheet,
+)
 from produtos.models import Produto
 from .email_config import get_smtp_settings
 from .configuration_forms import CompanyVisualIdentityForm
@@ -40,6 +51,10 @@ from .forms import (
     ProdutoForm,
     PropostaForm,
     AudienciaForm,
+    AtendimentoForm,
+    DespesaForm,
+    HonorarioForm,
+    TimesheetForm,
     MovimentacaoForm,
     PrazoForm,
     ProcessoForm,
@@ -57,15 +72,24 @@ SECTION_LABELS = {
 }
 
 STATUS_TONES = {
-    "success": {"cliente", "ganha", "pago", "ativo", "concluido", "concluida", "realizada"},
+    "success": {
+        "cliente", "ganha", "pago", "ativo", "concluido", "concluida", "realizada",
+        "recebido", "reembolsada", "convertido",
+    },
     "warning": {
         "negociacao", "enviada", "pendente", "aberto", "em_andamento", "agendada",
-        "aguardando_assinatura", "suspenso", "adiada", "alta",
+        "aguardando_assinatura", "suspenso", "adiada", "alta", "a_faturar", "a_reembolsar",
     },
     "danger": {"perdida", "atrasado", "perdido", "cancelada", "cancelado", "rescindido", "urgente"},
-    "info": {"lead", "rascunho", "media"},
+    "info": {"lead", "rascunho", "media", "faturado"},
 }
 BADGE_FIELDS = {"status", "status_pagamento", "prioridade"}
+# Rótulos e tons de campos booleanos: (verdadeiro, falso, tom quando verdadeiro, tom quando falso)
+BOOLEAN_LABELS = {
+    "urgente": ("Urgente", "Normal", "danger", "neutral"),
+    "processada": ("Tratada", "Pendente", "success", "warning"),
+    "faturado": ("Faturado", "A faturar", "success", "warning"),
+}
 
 
 def _tone_for(value):
@@ -166,6 +190,75 @@ MODULES = {
         "search": ("titulo", "local", "processo__numero_cnj", "processo__titulo"),
         "select_related": ("processo", "responsavel"),
     },
+    "atendimentos": {
+        "title": "Atendimentos",
+        "singular": "atendimento",
+        "app": "juridico",
+        "model": Atendimento,
+        "form": AtendimentoForm,
+        "columns": [
+            ("data", "Data", "datetime"),
+            ("assunto", "Assunto", "text"),
+            ("cliente", "Cliente", "text"),
+            ("canal", "Canal", "choice"),
+            ("responsavel", "Responsável", "text"),
+            ("status", "Status", "choice"),
+        ],
+        "search": ("assunto", "relato", "cliente__nome", "cliente__documento"),
+        "select_related": ("cliente", "responsavel"),
+    },
+    "timesheets": {
+        "title": "Timesheet",
+        "singular": "lançamento de horas",
+        "app": "juridico",
+        "model": Timesheet,
+        "form": TimesheetForm,
+        "columns": [
+            ("data", "Data", "date"),
+            ("descricao", "Atividade", "text"),
+            ("processo", "Processo", "text"),
+            ("usuario", "Profissional", "text"),
+            ("duracao", "Duração", "text"),
+            ("valor", "Valor", "currency"),
+            ("faturado", "Faturado", "boolean"),
+        ],
+        "search": ("descricao", "processo__numero_cnj", "processo__titulo", "usuario__username"),
+        "select_related": ("processo", "usuario"),
+    },
+    "honorarios": {
+        "title": "Honorários",
+        "singular": "honorário",
+        "app": "juridico",
+        "model": Honorario,
+        "form": HonorarioForm,
+        "columns": [
+            ("descricao", "Descrição", "text"),
+            ("processo", "Processo", "text"),
+            ("tipo", "Tipo", "choice"),
+            ("valor", "Valor", "currency"),
+            ("vencimento", "Vencimento", "date"),
+            ("status", "Status", "choice"),
+        ],
+        "search": ("descricao", "processo__numero_cnj", "processo__titulo", "processo__cliente__nome"),
+        "select_related": ("processo",),
+    },
+    "despesas": {
+        "title": "Despesas",
+        "singular": "despesa",
+        "feminine": True,
+        "app": "juridico",
+        "model": Despesa,
+        "form": DespesaForm,
+        "columns": [
+            ("data", "Data", "date"),
+            ("descricao", "Descrição", "text"),
+            ("processo", "Processo", "text"),
+            ("valor", "Valor", "currency"),
+            ("status", "Status", "choice"),
+        ],
+        "search": ("descricao", "processo__numero_cnj", "processo__titulo"),
+        "select_related": ("processo",),
+    },
     "publicacoes": {
         "title": "Publicações e Radar",
         "singular": "publicação",
@@ -179,7 +272,7 @@ MODULES = {
             ("tribunal", "Tribunal", "text"),
             ("publicada_em", "Publicado em", "date"),
             ("urgente", "Urgência", "boolean"),
-            ("processada", "Processada", "boolean"),
+            ("processada", "Tratada", "boolean"),
         ],
         "search": ("titulo", "conteudo", "monitoramento", "tribunal"),
         "select_related": ("processo",),
@@ -525,8 +618,11 @@ def _get_columns(module, objects):
             elif display:
                 value = display()
             elif kind == "boolean":
-                tone = "success" if value else "neutral"
-                value = "Ativo" if value else "Inativo"
+                yes, no, yes_tone, no_tone = BOOLEAN_LABELS.get(
+                    field_name, ("Ativo", "Inativo", "success", "neutral")
+                )
+                tone = yes_tone if value else no_tone
+                value = yes if value else no
             if tone:
                 kind = "badge"
             cells.append({"value": value, "kind": kind, "tone": tone, "label": label})
@@ -582,6 +678,29 @@ def record_list(request, module):
                 row["object"].proposta.status == Proposta.Status.GANHA
                 and row["object"].pk not in existing_orders
             )
+    publication_kpis = None
+    if module == "publicacoes":
+        hoje = timezone.localdate()
+        pendentes = Publicacao.objects.filter(processada=False, descartada=False)
+        publication_kpis = {
+            "nao_tratadas": pendentes.count(),
+            "urgentes": pendentes.filter(Q(urgente=True) | Q(urgente_ia=True)).count(),
+            "tratadas_hoje": Publicacao.objects.filter(
+                processada=True, tratada_em__date=hoje
+            ).count(),
+            "descartadas_hoje": Publicacao.objects.filter(
+                descartada=True, tratada_em__date=hoje
+            ).count(),
+        }
+        status_filter = request.GET.get("status")
+        if status_filter == "pendentes":
+            queryset = queryset.filter(processada=False, descartada=False)
+        elif status_filter == "tratadas":
+            queryset = queryset.filter(processada=True)
+        elif status_filter == "descartadas":
+            queryset = queryset.filter(descartada=True)
+        page_obj = Paginator(queryset, 20).get_page(request.GET.get("page"))
+        rows = _get_columns(config, page_obj.object_list)
     return render(
         request,
         "core/record_list.html",
@@ -591,6 +710,8 @@ def record_list(request, module):
             "module": config,
             "section": SECTION_LABELS.get(config["app"], config["app"]),
             "new_label": _gendered(config, "Novo", "Nova"),
+            "publication_kpis": publication_kpis,
+            "status_filter": request.GET.get("status", ""),
             "columns": [column[1] for column in config["columns"]],
             "rows": rows,
             "page_obj": page_obj,
@@ -625,11 +746,25 @@ def record_edit(request, module, pk=None):
         "data": request.POST if request.method == "POST" else None,
         "instance": instance,
     }
+    if not instance and request.method == "GET":
+        # Permite links que já abrem o cadastro preenchido (ex.: cronômetro, converter atendimento).
+        allowed = set(config["form"]._meta.fields or ())
+        form_kwargs["initial"] = {
+            key: value[:500] for key, value in request.GET.items() if key in allowed
+        }
+        for user_field in ("responsavel", "usuario"):
+            if user_field in allowed:
+                form_kwargs["initial"].setdefault(user_field, request.user.pk)
     if module == "contratos" and not instance and request.GET.get("pedido_id"):
-        form_kwargs["initial"] = {"pedido_venda": request.GET["pedido_id"]}
+        form_kwargs.setdefault("initial", {})["pedido_venda"] = request.GET["pedido_id"]
     form = config["form"](**form_kwargs)
     if request.method == "POST" and form.is_valid():
-        form.save()
+        saved = form.save()
+        atendimento_id = request.GET.get("atendimento", "")
+        if module == "processos" and not instance and atendimento_id.isdigit():
+            Atendimento.objects.filter(pk=int(atendimento_id), cliente=saved.cliente).update(
+                processo=saved, status=Atendimento.Status.CONVERTIDO
+            )
         messages.success(
             request,
             f"{config['singular'].capitalize()} "
