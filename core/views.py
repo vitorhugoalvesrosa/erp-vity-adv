@@ -1,6 +1,5 @@
 import smtplib
 from io import BytesIO
-from mimetypes import guess_type
 from xml.sax.saxutils import escape
 
 from django.contrib import messages
@@ -11,7 +10,7 @@ from django.core.mail import EmailMessage
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q, Sum
-from django.http import FileResponse, Http404, HttpResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils import timezone
@@ -48,6 +47,36 @@ from .forms import (
 from .models import CompanyProfile
 
 
+SECTION_LABELS = {
+    "juridico": "Jurídico",
+    "crm": "CRM e vendas",
+    "produtos": "Operação",
+    "financeiro": "Financeiro",
+}
+
+STATUS_TONES = {
+    "success": {"cliente", "ganha", "pago", "ativo", "concluido", "concluida", "realizada"},
+    "warning": {
+        "negociacao", "enviada", "pendente", "aberto", "em_andamento", "agendada",
+        "aguardando_assinatura", "suspenso", "adiada", "alta",
+    },
+    "danger": {"perdida", "atrasado", "perdido", "cancelada", "cancelado", "rescindido", "urgente"},
+    "info": {"lead", "rascunho", "media"},
+}
+BADGE_FIELDS = {"status", "status_pagamento", "prioridade"}
+
+
+def _tone_for(value):
+    for tone, values in STATUS_TONES.items():
+        if value in values:
+            return tone
+    return "neutral"
+
+
+def _gendered(config, masculine, feminine):
+    return feminine if config.get("feminine") else masculine
+
+
 MODULES = {
     "processos": {
         "title": "Processos",
@@ -70,6 +99,7 @@ MODULES = {
     "movimentacoes": {
         "title": "Movimentações",
         "singular": "movimentação",
+        "feminine": True,
         "app": "juridico",
         "model": Movimentacao,
         "form": MovimentacaoForm,
@@ -101,6 +131,7 @@ MODULES = {
     "tarefas": {
         "title": "Agenda e tarefas",
         "singular": "tarefa",
+        "feminine": True,
         "app": "juridico",
         "model": Tarefa,
         "form": TarefaForm,
@@ -118,6 +149,7 @@ MODULES = {
     "publicacoes": {
         "title": "Publicações e Radar",
         "singular": "publicação",
+        "feminine": True,
         "app": "juridico",
         "model": Publicacao,
         "form": PublicacaoForm,
@@ -135,6 +167,7 @@ MODULES = {
     "contas": {
         "title": "Contas e clientes",
         "singular": "conta",
+        "feminine": True,
         "app": "crm",
         "model": Conta,
         "form": ContaForm,
@@ -215,6 +248,7 @@ MODULES = {
     "recebiveis": {
         "title": "Contas a receber",
         "singular": "conta a receber",
+        "feminine": True,
         "app": "financeiro",
         "model": ContaReceber,
         "form": ContaReceberForm,
@@ -258,7 +292,7 @@ def home(request):
             {
                 "label": "Contas no CRM",
                 "value": Conta.objects.count(),
-                "symbol": "CRM",
+                "icon": "clients",
                 "tone": "violet",
                 "url": "record-list",
                 "module": "contas",
@@ -269,7 +303,7 @@ def home(request):
             {
                 "label": "Produtos ativos",
                 "value": Produto.objects.filter(ativo=True).count(),
-                "symbol": "SKU",
+                "icon": "products",
                 "tone": "mint",
                 "url": "record-list",
                 "module": "produtos",
@@ -282,7 +316,7 @@ def home(request):
                 "value": Proposta.objects.filter(
                     status__in=[Proposta.Status.RASCUNHO, Proposta.Status.ENVIADA]
                 ).count(),
-                "symbol": "↗",
+                "icon": "budget",
                 "tone": "amber",
                 "url": "record-list",
                 "module": "propostas",
@@ -293,7 +327,7 @@ def home(request):
             {
                 "label": "Processos ativos",
                 "value": Processo.objects.filter(status=Processo.Status.ATIVO).count(),
-                "symbol": "PJ",
+                "icon": "process",
                 "tone": "violet",
                 "url": "record-list",
                 "module": "processos",
@@ -305,7 +339,7 @@ def home(request):
             {
                 "label": "Prazos abertos",
                 "value": open_deadlines.count(),
-                "symbol": "PZ",
+                "icon": "calendar",
                 "tone": "amber",
                 "url": "record-list",
                 "module": "prazos",
@@ -319,7 +353,7 @@ def home(request):
                     urgente=True,
                     processada=False,
                 ).count(),
-                "symbol": "RD",
+                "icon": "radar",
                 "tone": "mint",
                 "url": "record-list",
                 "module": "publicacoes",
@@ -340,13 +374,18 @@ def home(request):
                     "total"
                 ]
                 or 0,
-                "symbol": "R$",
+                "icon": "receivable",
                 "tone": "blue",
                 "kind": "currency",
                 "url": "record-list",
                 "module": "recebiveis",
             }
         )
+    recent_proposals = []
+    if can_view(Proposta):
+        recent_proposals = list(Proposta.objects.select_related("conta")[:5])
+        for proposta in recent_proposals:
+            proposta.status_tone = _tone_for(proposta.status)
     return render(
         request,
         "core/home.html",
@@ -357,11 +396,7 @@ def home(request):
             "overdue_count": (
                 overdue_receivables.count() if can_view(ContaReceber) else None
             ),
-            "recent_proposals": (
-                Proposta.objects.select_related("conta")[:5]
-                if can_view(Proposta)
-                else []
-            ),
+            "recent_proposals": recent_proposals,
             "show_proposals": can_view(Proposta),
             "today": timezone.localdate(),
         },
@@ -426,9 +461,10 @@ def _get_columns(module, objects):
     rows = []
     for obj in objects:
         cells = []
-        for field_name, _label, kind in module["columns"]:
+        for field_name, label, kind in module["columns"]:
             value = getattr(obj, field_name)
             display = getattr(obj, f"get_{field_name}_display", None)
+            tone = _tone_for(value) if field_name in BADGE_FIELDS else None
             if field_name == "quantidade_estoque" and getattr(obj, "eh_servico", False):
                 value = "Não controlado"
                 kind = "text"
@@ -437,8 +473,11 @@ def _get_columns(module, objects):
             elif display:
                 value = display()
             elif kind == "boolean":
+                tone = "success" if value else "neutral"
                 value = "Ativo" if value else "Inativo"
-            cells.append({"value": value, "kind": kind})
+            if tone:
+                kind = "badge"
+            cells.append({"value": value, "kind": kind, "tone": tone, "label": label})
         rows.append({"object": obj, "cells": cells})
     return rows
 
@@ -460,7 +499,7 @@ def record_list(request, module):
         queryset = queryset.filter(query)
 
     page_obj = Paginator(queryset, 20).get_page(request.GET.get("page"))
-    permission_prefix = f"{config['app']}.{config['model']._meta.model_name}"
+    model_name = config["model"]._meta.model_name
     rows = _get_columns(config, page_obj.object_list)
     can_generate_order = module == "propostas" and request.user.has_perm(
         "financeiro.add_pedidovenda"
@@ -498,6 +537,8 @@ def record_list(request, module):
             "page_title": config["title"],
             "active_module": module,
             "module": config,
+            "section": SECTION_LABELS.get(config["app"], config["app"]),
+            "new_label": _gendered(config, "Novo", "Nova"),
             "columns": [column[1] for column in config["columns"]],
             "rows": rows,
             "page_obj": page_obj,
@@ -507,13 +548,13 @@ def record_list(request, module):
             "next_page": page_obj.next_page_number() if page_obj.has_next() else None,
             "search": search,
             "can_add": request.user.has_perm(
-                f"{permission_prefix}.add_{config['model']._meta.model_name}"
+                f"{config['app']}.add_{model_name}"
             ),
             "can_change": request.user.has_perm(
-                f"{permission_prefix}.change_{config['model']._meta.model_name}"
+                f"{config['app']}.change_{model_name}"
             ),
             "can_delete": request.user.has_perm(
-                f"{permission_prefix}.delete_{config['model']._meta.model_name}"
+                f"{config['app']}.delete_{model_name}"
             ),
             "can_generate_order": can_generate_order,
             "can_generate_contract": can_generate_contract,
@@ -540,7 +581,8 @@ def record_edit(request, module, pk=None):
         messages.success(
             request,
             f"{config['singular'].capitalize()} "
-            f"{'atualizado' if instance else 'criado'} com sucesso.",
+            f"{_gendered(config, 'atualizado', 'atualizada') if instance else _gendered(config, 'criado', 'criada')}"
+            " com sucesso.",
         )
         return redirect("record-list", module=module)
 
@@ -548,9 +590,14 @@ def record_edit(request, module, pk=None):
         request,
         "core/record_form.html",
         {
-            "page_title": f"{'Editar' if instance else 'Novo'} {config['singular']}",
+            "page_title": (
+                f"Editar {config['singular']}"
+                if instance
+                else f"{_gendered(config, 'Novo', 'Nova')} {config['singular']}"
+            ),
             "active_module": module,
             "module": config,
+            "section": SECTION_LABELS.get(config["app"], config["app"]),
             "form": form,
             "instance": instance,
         },
@@ -670,8 +717,8 @@ def contract_pdf(request, pk):
     client_representative = contract.client_representative or "representante legal"
     story = []
     logo_stream = None
-    if company and company.logo:
-        logo_stream = BytesIO(company.logo.read())
+    if company and company.has_logo:
+        logo_stream = BytesIO(bytes(company.logo_data))
         story.append(Image(logo_stream, width=42 * mm, height=20 * mm, kind="proportional"))
         story.append(Spacer(1, 4 * mm))
     story.extend(
@@ -857,12 +904,11 @@ def contract_pdf(request, pk):
 
 def company_logo(request):
     company = CompanyProfile.objects.first()
-    if not company or not company.logo:
+    if not company or not company.has_logo:
         raise Http404("Logo não configurado.")
-    return FileResponse(
-        company.logo.open("rb"),
-        content_type=guess_type(company.logo.name)[0] or "application/octet-stream",
-    )
+    response = HttpResponse(bytes(company.logo_data), content_type=company.logo_content_type)
+    response["Cache-Control"] = "private, max-age=86400"
+    return response
 
 
 @login_required
@@ -873,7 +919,7 @@ def record_delete(request, module, pk):
     instance = get_object_or_404(config["model"], pk=pk)
     if request.method == "POST":
         instance.delete()
-        messages.success(request, f"{config['singular'].capitalize()} removido.")
+        messages.success(request, f"{config['singular'].capitalize()} {_gendered(config, 'removido', 'removida')}.")
         return redirect("record-list", module=module)
 
     return render(
@@ -883,6 +929,7 @@ def record_delete(request, module, pk):
             "page_title": f"Excluir {config['singular']}",
             "active_module": module,
             "module": config,
+            "section": SECTION_LABELS.get(config["app"], config["app"]),
             "instance": instance,
         },
     )

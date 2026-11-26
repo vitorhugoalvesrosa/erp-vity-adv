@@ -3,7 +3,7 @@
 {% block content %}
     <header class="page-heading">
         <div>
-            <p class="eyebrow">{{ module.title }}</p>
+            <p class="eyebrow">{{ section }} · {{ module.title }}</p>
             <h1>{{ page_title }}</h1>
             <p>{% if active_module == "contratos" %}Complete o escopo, as condições comerciais e a vigência antes de emitir a minuta em PDF.{% else %}Preencha os campos abaixo para salvar as informações.{% endif %}</p>
         </div>
@@ -19,7 +19,7 @@
                         {% if field.field.widget.input_type == "checkbox" %}
                             <label class="form-checkbox-row" for="{{ field.id_for_label }}">{{ field }} {{ field.label }}</label>
                         {% else %}
-                            {{ field.label_tag }}
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                             {{ field }}
                         {% endif %}
                         {{ field.errors }}

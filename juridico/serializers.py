@@ -1,6 +1,14 @@
 from rest_framework import serializers
 
-from .models import Movimentacao, Prazo, Processo, Publicacao, Tarefa
+from .models import (
+    Audiencia,
+    IntegracaoTribunal,
+    Movimentacao,
+    Prazo,
+    Processo,
+    Publicacao,
+    Tarefa,
+)
 
 
 class ProcessoSerializer(serializers.ModelSerializer):
@@ -91,3 +99,27 @@ class PublicacaoSerializer(serializers.ModelSerializer):
         model = Publicacao
         fields = "__all__"
         read_only_fields = ("id", "capturada_em")
+
+
+class AudienciaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Audiencia
+        fields = "__all__"
+        read_only_fields = ("id", "criada_em", "atualizada_em")
+
+
+class IntegracaoTribunalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = IntegracaoTribunal
+        fields = (
+            "id",
+            "nome",
+            "provider",
+            "uf",
+            "tribunal",
+            "endpoint",
+            "ativo",
+            "ultima_sincronizacao",
+            "criado_em",
+        )
+        read_only_fields = ("id", "ultima_sincronizacao", "criado_em")

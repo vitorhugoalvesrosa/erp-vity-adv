@@ -1,7 +1,15 @@
 from django.contrib import admin
 
 from core.admin_site import erp_admin_site
-from .models import Movimentacao, Prazo, Processo, Publicacao, Tarefa
+from .models import (
+    Audiencia,
+    IntegracaoTribunal,
+    Movimentacao,
+    Prazo,
+    Processo,
+    Publicacao,
+    Tarefa,
+)
 
 
 class MovimentacaoInline(admin.TabularInline):
@@ -42,3 +50,16 @@ class PublicacaoAdmin(admin.ModelAdmin):
     list_display = ("titulo", "tribunal", "monitoramento", "publicada_em", "urgente", "processada")
     list_filter = ("urgente", "processada", "tribunal")
     search_fields = ("titulo", "conteudo", "monitoramento")
+
+
+@admin.register(Audiencia, site=erp_admin_site)
+class AudienciaAdmin(admin.ModelAdmin):
+    list_display = ("titulo", "processo", "data_hora", "modalidade", "responsavel", "status")
+    list_filter = ("status", "modalidade", "responsavel")
+    search_fields = ("titulo", "local", "processo__numero_cnj")
+
+
+@admin.register(IntegracaoTribunal, site=erp_admin_site)
+class IntegracaoTribunalAdmin(admin.ModelAdmin):
+    list_display = ("nome", "provider", "uf", "tribunal", "ativo", "ultima_sincronizacao")
+    list_filter = ("provider", "uf", "ativo")

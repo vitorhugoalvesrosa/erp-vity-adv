@@ -4,9 +4,11 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#f4f6fb">
+    <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0b0d12" media="(prefers-color-scheme: dark)">
     <title>{% block title %}ERP Vity ADV{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'core/app.css' %}">
+    {% include "core/_theme_head.html" %}
 </head>
 <body class="auth-page">
     <main class="auth-shell">

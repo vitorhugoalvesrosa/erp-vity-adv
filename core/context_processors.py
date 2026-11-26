@@ -2,7 +2,7 @@ from .models import CompanyProfile
 
 
 def company_profile(request):
-    profile = CompanyProfile.objects.first()
+    profile = CompanyProfile.objects.defer("logo_data").first()
     return {
         "company_profile": profile,
         "sidebar_color": profile.sidebar_color if profile else "#171D35",

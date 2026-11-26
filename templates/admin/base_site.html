@@ -18,8 +18,8 @@
 {% block branding %}
     <div id="site-name" class="erp-admin-brand">
         <a href="{% url 'admin:index' %}" aria-label="{{ company_display_name }} Administração">
-            {% if company_profile.logo %}
-                <img src="{% url 'company-logo' %}" alt="">
+            {% if company_profile.has_logo %}
+                <img src="{% url 'company-logo' %}?v={{ company_profile.updated_at|date:'U' }}" alt="">
             {% else %}
                 <span class="erp-admin-brand-mark">{{ company_display_name|slice:":1"|upper }}</span>
             {% endif %}

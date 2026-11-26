@@ -4,14 +4,16 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#f5f6fb">
+    <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0b0d12" media="(prefers-color-scheme: dark)">
     <title>PDV | ERP Vity ADV</title>
     <link rel="stylesheet" href="{% static 'core/app.css' %}">
+    {% include "core/_theme_head.html" %}
 </head>
 <body>
     <header class="topbar pdv-standalone-topbar">
         <div class="topbar-title">
-            <span>ERP Vity ADV / operação</span>
+            <span class="crumb-company">{{ company_display_name }}</span><span class="crumb-sep" aria-hidden="true">/</span>
             <strong>Ponto de venda</strong>
         </div>
         <div class="topbar-actions">
@@ -32,7 +34,7 @@
         {% endif %}
     <header class="page-heading">
         <div>
-            <p class="eyebrow">OPERAÇÃO</p>
+            <p class="eyebrow">Operação</p>
             <h1>Ponto de venda</h1>
             <p>Registre vendas no ERP, controle o caixa e acompanhe o estoque.</p>
         </div>

@@ -50,9 +50,26 @@ class CompanyProfileAdmin(admin.ModelAdmin):
         ("Contato", {"fields": ("phone", "email")}),
         (
             "Identidade visual",
-            {"fields": ("logo", "primary_color", "sidebar_color", "accent_color")},
+            {
+                "fields": (
+                    "logo",
+                    "remove_logo",
+                    "primary_color",
+                    "sidebar_color",
+                    "accent_color",
+                )
+            },
         ),
     )
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = super().get_fieldsets(request, obj)
+        if obj and obj.has_logo:
+            return fieldsets
+        return [
+            (name, {**options, "fields": tuple(f for f in options["fields"] if f != "remove_logo")})
+            for name, options in fieldsets
+        ]
 
     def has_add_permission(self, request):
         return not CompanyProfile.objects.exists()

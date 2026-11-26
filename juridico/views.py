@@ -1,3 +1,7 @@
+import json
+import urllib.request
+
+from django.conf import settings
 from django.db.models import Count
 from django.utils import timezone
 from rest_framework import viewsets
@@ -5,12 +9,22 @@ from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
 
-from .models import Movimentacao, Prazo, Processo, Publicacao, Tarefa
+from .models import (
+    Audiencia,
+    IntegracaoTribunal,
+    Movimentacao,
+    Prazo,
+    Processo,
+    Publicacao,
+    Tarefa,
+)
 from .serializers import (
     MovimentacaoSerializer,
     PrazoSerializer,
     ProcessoSerializer,
     PublicacaoSerializer,
+    AudienciaSerializer,
+    IntegracaoTribunalSerializer,
     TarefaSerializer,
 )
 
@@ -182,3 +196,79 @@ class PublicacaoViewSet(viewsets.ModelViewSet):
         publicacao.processada = True
         publicacao.save(update_fields=["processada"])
         return Response(self.get_serializer(publicacao).data)
+
+
+class AudienciaViewSet(viewsets.ModelViewSet):
+    queryset = Audiencia.objects.select_related("processo", "responsavel").all()
+    serializer_class = AudienciaSerializer
+    filter_backends = (SearchFilter, OrderingFilter)
+    search_fields = ("titulo", "local", "processo__numero_cnj")
+    ordering_fields = ("data_hora", "status", "criada_em")
+
+
+class IntegracaoTribunalViewSet(viewsets.ModelViewSet):
+    queryset = IntegracaoTribunal.objects.all()
+    serializer_class = IntegracaoTribunalSerializer
+
+    @action(detail=True, methods=["post"])
+    def sincronizar(self, request, pk=None):
+        integracao = self.get_object()
+        numero_cnj = request.data.get("numero_cnj", "").strip()
+        if not numero_cnj:
+            return Response(
+                {"detail": "Informe numero_cnj."},
+                status=400,
+            )
+        if not integracao.ativo:
+            return Response(
+                {"detail": "Integração desativada."},
+                status=400,
+            )
+
+        api_key = getattr(settings, "DATAJUD_API_KEY", "")
+        if integracao.provider == IntegracaoTribunal.Provider.DATAJUD and not api_key:
+            return Response(
+                {
+                    "detail": (
+                        "Configure DATAJUD_API_KEY no ambiente antes de sincronizar."
+                    )
+                },
+                status=503,
+            )
+
+        payload = {
+            "query": {
+                "match": {
+                    "numeroProcesso": "".join(numero_cnj.split()),
+                }
+            },
+            "size": 100,
+        }
+        provider_request = urllib.request.Request(
+            integracao.endpoint,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Authorization": f"APIKey {api_key}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(provider_request, timeout=20) as response:
+                data = json.loads(response.read().decode("utf-8"))
+        except Exception as exc:
+            return Response(
+                {"detail": f"Falha na integração judicial: {exc}"},
+                status=502,
+            )
+
+        integracao.ultima_sincronizacao = timezone.now()
+        integracao.save(update_fields=["ultima_sincronizacao"])
+        return Response(
+            {
+                "provider": integracao.provider,
+                "tribunal": integracao.tribunal,
+                "uf": integracao.uf,
+                "resultado": data,
+            }
+        )

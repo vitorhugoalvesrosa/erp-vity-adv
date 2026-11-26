@@ -1,0 +1,10 @@
+{% load static %}
+<link rel="preload" href="{% static 'core/fonts/inter-latin.woff2' %}" as="font" type="font/woff2" crossorigin>
+<script>
+    try {
+        const savedTheme = window.localStorage.getItem("erp-vity-adv-theme");
+        if (savedTheme === "dark" || savedTheme === "light") {
+            document.documentElement.dataset.theme = savedTheme;
+        }
+    } catch (error) {}
+</script>

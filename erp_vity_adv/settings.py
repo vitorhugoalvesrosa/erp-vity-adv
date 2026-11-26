@@ -200,6 +200,16 @@ EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "10"))
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER)
 CONFIG_ENCRYPTION_KEY = os.getenv("CONFIG_ENCRYPTION_KEY", "")
 
+# WhatsApp Cloud API e IA do primeiro atendimento
+WHATSAPP_PHONE_ID = os.getenv("WHATSAPP_PHONE_ID", "")
+WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
+WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
+WHATSAPP_APP_SECRET = os.getenv("WHATSAPP_APP_SECRET", "")
+AI_API_URL = os.getenv("AI_API_URL", "")
+AI_API_KEY = os.getenv("AI_API_KEY", "")
+AI_MODEL = os.getenv("AI_MODEL", "gpt-4o-mini")
+DATAJUD_API_KEY = os.getenv("DATAJUD_API_KEY", "")
+
 if EMAIL_USE_TLS and EMAIL_USE_SSL:
     raise ValueError("Configure apenas um entre EMAIL_USE_TLS e EMAIL_USE_SSL.")
 

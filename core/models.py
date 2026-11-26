@@ -59,7 +59,9 @@ class CompanyProfile(models.Model):
     state = models.CharField("UF", max_length=2, default="RJ")
     phone = models.CharField("Telefone", max_length=30, blank=True)
     email = models.EmailField("E-mail da empresa", blank=True)
-    logo = models.ImageField("Logo", upload_to="company/logos/", blank=True)
+    # O logo fica no banco: o disco do Render é apagado a cada deploy.
+    logo_data = models.BinaryField("Logo", editable=False, default=bytes)
+    logo_content_type = models.CharField(max_length=30, blank=True, editable=False)
     primary_color = models.CharField(
         "Cor principal",
         max_length=7,
@@ -91,6 +93,10 @@ class CompanyProfile(models.Model):
 
     def __str__(self):
         return self.trade_name or self.legal_name
+
+    @property
+    def has_logo(self):
+        return bool(self.logo_content_type)
 
 
 class SMTPConfiguration(models.Model):

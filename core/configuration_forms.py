@@ -10,12 +10,24 @@ from core.models import A1Certificate, CompanyProfile, SMTPConfiguration
 from core.secure_storage import encrypt_bytes, encrypt_text, validate_encryption_key
 
 
+LOGO_CONTENT_TYPES = {"PNG": "image/png", "JPEG": "image/jpeg", "WEBP": "image/webp"}
+
+
 class CompanyProfileForm(forms.ModelForm):
     cnpj = forms.CharField(
         label="CNPJ",
         max_length=18,
         help_text="Informe com ou sem pontuação; aceita o novo padrão alfanumérico.",
     )
+    logo = forms.FileField(
+        label="Logo",
+        required=False,
+        help_text="PNG, JPG ou WebP de até 2 MB. Em branco, mantém o logo atual.",
+        widget=forms.ClearableFileInput(
+            attrs={"accept": "image/png,image/jpeg,image/webp"}
+        ),
+    )
+    remove_logo = forms.BooleanField(label="Remover logo atual", required=False)
 
     class Meta:
         model = CompanyProfile
@@ -28,7 +40,8 @@ class CompanyProfileForm(forms.ModelForm):
             self.fields[field_name].widget = forms.TextInput(
                 attrs={"type": "color", "class": "vTextField"}
             )
-        self.fields["logo"].widget.attrs["accept"] = "image/png,image/jpeg,image/webp"
+        if not self.instance.has_logo:
+            del self.fields["remove_logo"]
 
     def clean_primary_color(self):
         return self.cleaned_data.get("primary_color") or (
@@ -53,8 +66,8 @@ class CompanyProfileForm(forms.ModelForm):
 
     def clean_logo(self):
         logo = self.cleaned_data.get("logo")
-        if not logo or not hasattr(logo, "read"):
-            return logo
+        if not logo:
+            return None
         if logo.size > 2 * 1024 * 1024:
             raise ValidationError("O logo não pode exceder 2 MB.")
         if Path(logo.name).suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
@@ -64,8 +77,11 @@ class CompanyProfileForm(forms.ModelForm):
 
             image = Image.open(logo)
             image.verify()
+            if image.format not in LOGO_CONTENT_TYPES:
+                raise ValidationError("Envie um logo PNG, JPG ou WebP.")
             if image.width > 2048 or image.height > 2048:
                 raise ValidationError("As dimensões do logo não podem exceder 2048 px.")
+            logo.erp_content_type = LOGO_CONTENT_TYPES[image.format]
         except ValidationError:
             raise
         except Exception as exc:
@@ -77,15 +93,36 @@ class CompanyProfileForm(forms.ModelForm):
     def clean_cnpj(self):
         return re.sub(r"[\s./-]", "", self.cleaned_data["cnpj"]).upper()
 
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        logo = self.cleaned_data.get("logo")
+        if logo:
+            instance.logo_data = logo.read()
+            instance.logo_content_type = logo.erp_content_type
+        elif self.cleaned_data.get("remove_logo"):
+            instance.logo_data = b""
+            instance.logo_content_type = ""
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
+
 
 class CompanyVisualIdentityForm(CompanyProfileForm):
+    field_order = (
+        "legal_name",
+        "trade_name",
+        "cnpj",
+        "logo",
+        "remove_logo",
+    )
+
     class Meta:
         model = CompanyProfile
         fields = (
             "legal_name",
             "trade_name",
             "cnpj",
-            "logo",
             "primary_color",
             "sidebar_color",
             "accent_color",

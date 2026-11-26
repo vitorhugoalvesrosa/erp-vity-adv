@@ -30,7 +30,12 @@ from PIL import Image as PILImage
 from crm.models import Conta, Proposta
 from core.admin_site import ERPAdminAuthenticationForm, erp_admin_site
 from core.access_control import MANAGER_GROUP, OPERATOR_GROUP, setup_access_groups
-from core.configuration_forms import A1CertificateForm, CompanyProfileForm, SMTPConfigurationForm
+from core.configuration_forms import (
+    A1CertificateForm,
+    CompanyProfileForm,
+    CompanyVisualIdentityForm,
+    SMTPConfigurationForm,
+)
 from core.email_config import get_smtp_settings
 from core.forms import ContratoForm
 from core.management.commands.bootstrap_erp_users import BOOTSTRAP_NAME
@@ -707,6 +712,88 @@ class ContractWorkflowTests(TestCase):
         self.assertEqual(logo.status_code, 200)
         self.assertEqual(logo["Content-Type"], "image/png")
 
+    def _png(self, color="red"):
+        image_data = BytesIO()
+        PILImage.new("RGB", (20, 20), color=color).save(image_data, format="PNG")
+        return SimpleUploadedFile("marca.png", image_data.getvalue(), content_type="image/png")
+
+    def test_logo_is_kept_in_database_when_profile_is_edited(self):
+        admin_user = get_user_model().objects.create_superuser(
+            username="logo-admin",
+            password="test-password",
+        )
+        self.client.force_login(admin_user)
+        base = {
+            "legal_name": "Prestadora de Serviços Ltda.",
+            "trade_name": "Marca",
+            "cnpj": "12345678901234",
+            "primary_color": "#123456",
+            "sidebar_color": "#234567",
+            "accent_color": "#298765",
+        }
+        url = reverse("visual-identity")
+        self.assertRedirects(self.client.post(url, {**base, "logo": self._png()}), url)
+        profile = CompanyProfile.objects.get()
+        self.assertTrue(profile.has_logo)
+        self.assertEqual(profile.logo_content_type, "image/png")
+
+        # Editar sem reenviar o logo não pode falhar nem apagar o logo atual.
+        self.assertRedirects(self.client.post(url, {**base, "trade_name": "Nova marca"}), url)
+        admin_change = reverse("admin:core_companyprofile_change", args=[profile.pk])
+        admin_response = self.client.post(
+            admin_change,
+            {**base, "tax_regime": CompanyProfile.TaxRegime.MEI, "city": "Rio", "state": "RJ"},
+        )
+        self.assertEqual(admin_response.status_code, 302)
+        profile.refresh_from_db()
+        self.assertEqual(profile.trade_name, "Marca")
+        self.assertTrue(profile.has_logo)
+        logo = self.client.get(reverse("company-logo"))
+        self.assertEqual(logo.status_code, 200)
+        self.assertTrue(logo.content.startswith(b"\x89PNG"))
+
+        self.assertRedirects(self.client.post(url, {**base, "remove_logo": "on"}), url)
+        profile.refresh_from_db()
+        self.assertFalse(profile.has_logo)
+        self.assertEqual(self.client.get(reverse("company-logo")).status_code, 404)
+
+    def test_logo_rejects_files_that_are_not_images(self):
+        form = CompanyVisualIdentityForm(
+            data={
+                "legal_name": "Empresa",
+                "cnpj": "12345678901234",
+            },
+            files={"logo": SimpleUploadedFile("marca.png", b"nao e imagem", content_type="image/png")},
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("logo", form.errors)
+
+    def test_contract_pdf_includes_logo_stored_in_database(self):
+        form = CompanyProfileForm(
+            data={
+                "legal_name": "Prestadora de Serviços Ltda.",
+                "cnpj": "12345678901234",
+                "tax_regime": CompanyProfile.TaxRegime.SIMPLES,
+                "city": "São Paulo",
+                "state": "SP",
+            },
+            files={"logo": self._png()},
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        self.proposal.status = Proposta.Status.GANHA
+        self.proposal.save(update_fields=["status"])
+        contract = Contrato.objects.create(
+            pedido_venda=PedidoVenda.objects.get(proposta=self.proposal),
+            service_description="Consultoria.",
+            payment_terms="À vista.",
+        )
+
+        response = self.client.get(reverse("contract-pdf", args=[contract.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.content.startswith(b"%PDF-"))
+
     def test_visual_identity_settings_and_admin_branding(self):
         self.client.force_login(self.manager)
         denied = self.client.get(reverse("visual-identity"))
@@ -971,3 +1058,18 @@ class FrontendPermissionTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertTrue(Conta.objects.filter(nome="Conta de teste").exists())
+
+    def test_record_list_shows_actions_according_to_role(self):
+        Conta.objects.create(nome="Conta listada", documento="11122233344")
+
+        manager_request = self.request_as("/app/contas/", self.manager)
+        operator_request = self.request_as("/app/contas/", self.operator)
+        with patch("core.views.render") as render_mock:
+            record_list(manager_request, module="contas")
+            manager_context = render_mock.call_args.args[2]
+            record_list(operator_request, module="contas")
+            operator_context = render_mock.call_args.args[2]
+
+        for flag in ("can_add", "can_change", "can_delete"):
+            self.assertTrue(manager_context[flag], flag)
+            self.assertFalse(operator_context[flag], flag)

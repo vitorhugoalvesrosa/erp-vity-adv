@@ -3,7 +3,7 @@
 {% block content %}
     <header class="page-heading">
         <div>
-            <p class="eyebrow">ADMINISTRAÇÃO DO ERP</p>
+            <p class="eyebrow">Administração</p>
             <h1>Identidade visual</h1>
             <p>Defina a marca e as cores usadas na navegação e nos cadastros.</p>
         </div>
@@ -34,7 +34,7 @@
             <div class="form-grid">
                 {% for field in form %}
                     <div class="form-field {% if field.name == 'logo' %}is-wide{% endif %}">
-                        {{ field.label_tag }}
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                         {{ field }}
                         {{ field.errors }}
                         {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}

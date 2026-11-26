@@ -3,47 +3,43 @@
 {% block content %}
     <header class="page-heading">
         <div>
-            <p class="eyebrow">{{ module.app|upper }}</p>
+            <p class="eyebrow">{{ section }}</p>
             <h1>{{ module.title }}</h1>
-            <p>Consulte e organize os registros do seu negócio.</p>
+            <p>{{ page_obj.paginator.count }} registro{{ page_obj.paginator.count|pluralize }}{% if search %} para “{{ search }}”{% endif %}</p>
         </div>
         {% if can_add %}
-            <a class="button" href="{% url 'record-create' module=active_module %}"><span aria-hidden="true">＋</span> Novo {{ module.singular }}</a>
+            <a class="button" href="{% url 'record-create' module=active_module %}"><svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg> {{ new_label }} {{ module.singular }}</a>
         {% endif %}
     </header>
 
     <form class="search-bar" method="get" role="search">
+        <svg class="icon search-icon" aria-hidden="true"><use href="#icon-search"></use></svg>
         <input class="form-control" type="search" name="q" value="{{ search }}" placeholder="Buscar em {{ module.title|lower }}..." aria-label="Buscar registros">
         <button class="button button-secondary" type="submit">Buscar</button>
     </form>
 
     <section class="panel">
-        <div class="panel-header">
-            <div>
-                <h2>{{ module.title }}</h2>
-                <p>{{ page_obj.paginator.count }} registro(s) encontrado(s)</p>
-            </div>
-        </div>
         <div class="table-wrap">
-            <table class="data-table">
+            <table class="data-table data-table-stack">
                 <thead>
                     <tr>
                         {% for column in columns %}<th>{{ column }}</th>{% endfor %}
-                        {% if can_change or can_delete or can_generate_order or can_generate_contract or active_module == "contratos" %}<th>Ações</th>{% endif %}
+                        {% if can_change or can_delete or can_generate_order or can_generate_contract or active_module == "contratos" %}<th class="actions-col"><span class="visually-hidden">Ações</span></th>{% endif %}
                     </tr>
                 </thead>
                 <tbody>
                     {% for row in rows %}
                         <tr>
                             {% for cell in row.cells %}
-                                <td>
-                                    {% if cell.kind == "currency" %}R$ {{ cell.value|floatformat:2 }}
-                                    {% elif cell.kind == "date" %}{{ cell.value|date:"d/m/Y" }}
+                                <td class="cell-{{ cell.kind }}{% if cell.value is None or cell.value == '' %} cell-empty{% endif %}" data-label="{{ cell.label }}">
+                                    {% if cell.kind == "badge" %}<span class="badge badge-{{ cell.tone }}">{{ cell.value }}</span>
+                                    {% elif cell.kind == "currency" %}R$ {{ cell.value|floatformat:"2g" }}
+                                    {% elif cell.kind == "date" %}{{ cell.value|date:"d/m/Y"|default:"—" }}
                                     {% else %}{{ cell.value|default:"—" }}{% endif %}
                                 </td>
                             {% endfor %}
                             {% if can_change or can_delete or can_generate_order or can_generate_contract or active_module == "contratos" %}
-                                <td>
+                                <td class="cell-actions">
                                     <div class="row-actions">
                                         {% if active_module == "propostas" and row.can_generate_order %}
                                             <form method="post" action="{% url 'generate-sale-order' proposal_id=row.object.pk %}">
@@ -72,8 +68,9 @@
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="{% if can_change or can_delete or can_generate_order or can_generate_contract or active_module == 'contratos' %}{{ columns|length|add:1 }}{% else %}{{ columns|length }}{% endif %}">
+                            <td class="cell-full" colspan="{% if can_change or can_delete or can_generate_order or can_generate_contract or active_module == 'contratos' %}{{ columns|length|add:1 }}{% else %}{{ columns|length }}{% endif %}">
                                 <div class="empty-state">
+                                    <span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#icon-{% if search %}search{% else %}inbox{% endif %}"></use></svg></span>
                                     <strong>{% if search %}Nada encontrado{% else %}Nenhum registro cadastrado{% endif %}</strong>
                                     <p>{% if search %}Tente buscar por outro termo.{% elif can_add %}Crie o primeiro registro para começar.{% else %}Os registros aparecerão aqui quando forem cadastrados.{% endif %}</p>
                                 </div>

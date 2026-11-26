@@ -179,3 +179,79 @@ class Publicacao(models.Model):
         ordering = ["-publicada_em", "-capturada_em"]
         verbose_name = "Publicação"
         verbose_name_plural = "Publicações"
+
+
+class Audiencia(models.Model):
+    class Status(models.TextChoices):
+        AGENDADA = "agendada", "Agendada"
+        REALIZADA = "realizada", "Realizada"
+        ADIADA = "adiada", "Adiada"
+        CANCELADA = "cancelada", "Cancelada"
+
+    processo = models.ForeignKey(
+        Processo,
+        on_delete=models.CASCADE,
+        related_name="audiencias",
+    )
+    titulo = models.CharField("Título", max_length=255)
+    data_hora = models.DateTimeField("Data e hora")
+    modalidade = models.CharField("Modalidade", max_length=50, default="presencial")
+    local = models.CharField("Local ou link", max_length=255, blank=True)
+    responsavel = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="audiencias_responsavel",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.AGENDADA,
+    )
+    observacoes = models.TextField("Observações", blank=True)
+    criada_em = models.DateTimeField(auto_now_add=True)
+    atualizada_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["data_hora"]
+        verbose_name = "Audiência"
+        verbose_name_plural = "Audiências"
+
+    def __str__(self):
+        return f"{self.titulo} - {self.data_hora:%d/%m/%Y %H:%M}"
+
+
+class IntegracaoTribunal(models.Model):
+    class Provider(models.TextChoices):
+        DATAJUD = "datajud", "CNJ DataJud"
+        PJE = "pje", "PJe"
+        ESAJ = "esaj", "e-SAJ"
+        PROJUDI = "projudi", "Projudi"
+        OUTRO = "outro", "Outro"
+
+    nome = models.CharField("Nome", max_length=100)
+    provider = models.CharField(
+        "Provedor",
+        max_length=20,
+        choices=Provider.choices,
+        default=Provider.DATAJUD,
+    )
+    uf = models.CharField("UF", max_length=2)
+    tribunal = models.CharField("Tribunal", max_length=100)
+    endpoint = models.URLField("Endpoint", max_length=500)
+    api_key_encrypted = models.BinaryField(
+        "Chave criptografada",
+        editable=False,
+        default=bytes,
+    )
+    ativo = models.BooleanField(default=True)
+    ultima_sincronizacao = models.DateTimeField(null=True, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["uf", "tribunal"]
+        unique_together = ("provider", "uf", "tribunal")
+        verbose_name = "Integração judicial"
+        verbose_name_plural = "Integrações judiciais"
+
+    def __str__(self):
+        return f"{self.nome} ({self.uf})"

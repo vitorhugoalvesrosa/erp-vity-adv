@@ -122,6 +122,39 @@ Os recursos oferecem operações de listagem, consulta por ID, criação, atuali
 
 Configure `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS` ou `FRONTEND_URL` no `.env` quando a aplicação for acessada por um frontend em outra origem.
 
+## WhatsApp, IA e CRM
+
+O sistema inclui uma base de atendimento comercial pelo WhatsApp:
+
+- webhook para WhatsApp Cloud API da Meta;
+- criação ou reutilização automática de lead;
+- identificação de pessoa física ou jurídica pela mensagem;
+- score simples de qualificação comercial;
+- distribuição automática entre vendedores registrados em `Regras de distribuição de leads`;
+- histórico de conversas e mensagens;
+- follow-ups com responsável, canal, prazo e status;
+- resposta automática configurável por uma API compatível com OpenAI.
+
+Configure no ambiente:
+
+- `WHATSAPP_PHONE_ID`
+- `WHATSAPP_ACCESS_TOKEN`
+- `WHATSAPP_VERIFY_TOKEN`
+- `WHATSAPP_APP_SECRET`
+- `AI_API_URL`
+- `AI_API_KEY`
+- `AI_MODEL`
+
+Endpoint do webhook: `POST /api/crm/whatsapp/webhook/`. O Meta usa `GET /api/crm/whatsapp/verify/` para validar o webhook.
+
+## Integrações judiciais
+
+O cadastro jurídico já controla processos, movimentações, prazos, tarefas, publicações e audiências. O módulo de integrações permite cadastrar provedores por UF e tribunal e oferece sincronização via CNJ DataJud.
+
+Para DataJud, cadastre a integração com o endpoint público do tribunal/segmento e configure `DATAJUD_API_KEY`. Nem todos os tribunais possuem API oficial pública com os mesmos dados e permissões; PJe, e-SAJ e Projudi podem exigir credenciamento ou adaptações por tribunal.
+
+Os recursos judiciais estão disponíveis em `/api/juridico/audiencias/` e `/api/juridico/integracoes-tribunais/`.
+
 ## Deploy no Render
 
 O arquivo `render.yaml` configura o Web Service Python. No Render, configure `DATABASE_URL` com a connection string pooled do branch do Neon (`Connect` → `Pooled connection`) como variável secreta do serviço; não a salve no repositório nem em arquivos versionados. O Django exige SSL em produção e desativa server-side cursors para compatibilidade com o pooler. O serviço instala `requirements.txt`, coleta os arquivos estáticos com WhiteNoise, executa as migrations, atualiza os grupos de acesso e tenta o bootstrap único das contas ao iniciar, e então inicia o Gunicorn.

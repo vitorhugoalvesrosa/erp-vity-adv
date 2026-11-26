@@ -59,11 +59,11 @@ def proposta_to_pedido_venda(sender, instance, created, **kwargs):
                     }
                 ]
             elif instance.condicao_pagamento == Proposta.CondicaoPagamento.TRINTA_SIXENTA_NOVENTA:
-                parcela_base = instance.valor_total / 3
+                parcela_base = round(instance.valor_total / 3, 2)
                 parcelas = [
-                    {"valor": round(parcela_base, 2), "data": instance.data_validade + timedelta(days=30)},
-                    {"valor": round(parcela_base, 2), "data": instance.data_validade + timedelta(days=60)},
-                    {"valor": round(instance.valor_total - (parcela_base * 2), 2), "data": instance.data_validade + timedelta(days=90)},
+                    {"valor": parcela_base, "data": instance.data_validade + timedelta(days=30)},
+                    {"valor": parcela_base, "data": instance.data_validade + timedelta(days=60)},
+                    {"valor": instance.valor_total - (parcela_base * 2), "data": instance.data_validade + timedelta(days=90)},
                 ]
             else:
                 parcelas = []
