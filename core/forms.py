@@ -2,9 +2,10 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm, PasswordResetForm
 from django.db import models
+from django.utils import timezone
 
 from crm.models import Conta, Proposta
-from financeiro.models import Contrato, ContaReceber, Pagamento, PedidoVenda
+from financeiro.models import Contrato, ContaPagar, ContaReceber, PedidoVenda
 from juridico.models import (
     Atendimento,
     Audiencia,
@@ -160,10 +161,108 @@ class ContaReceberForm(ERPModelForm):
         )
 
 
-class PagamentoForm(ERPModelForm):
+def somar_meses(data, meses):
+    """Mesmo dia nos meses seguintes; no fim do mês, usa o último dia (31/01 → 28/02)."""
+    import calendar
+
+    total = data.month - 1 + meses
+    ano, mes = data.year + total // 12, total % 12 + 1
+    return data.replace(year=ano, month=mes, day=min(data.day, calendar.monthrange(ano, mes)[1]))
+
+
+class ContaPagarForm(ERPModelForm):
+    repetir = forms.IntegerField(
+        label="Repetir mensalmente",
+        min_value=1,
+        max_value=36,
+        initial=1,
+        required=False,
+        help_text="Quantidade de meses (ex.: 12 para o aluguel do ano). 1 cria só esta conta.",
+    )
+
     class Meta:
-        model = Pagamento
-        fields = ("conta_receber", "valor", "data_pagamento", "metodo_pagamento")
+        model = ContaPagar
+        fields = (
+            "descricao",
+            "favorecido",
+            "categoria",
+            "valor",
+            "data_vencimento",
+            "forma_pagamento",
+            "codigo_barras",
+            "cliente",
+            "processo",
+            "status",
+            "data_pagamento",
+            "valor_pago",
+            "observacoes",
+        )
+        widgets = {"observacoes": forms.Textarea(attrs={"rows": 3})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.created_extra = []
+        self.fields["repetir"].widget.attrs.update({"class": "form-control", "step": "1"})
+        self.fields["cliente"].empty_label = "Nenhum"
+        self.fields["processo"].empty_label = "Nenhum"
+        self.fields["processo"].queryset = self.fields["processo"].queryset.select_related("cliente")
+        if self.instance.pk:
+            del self.fields["repetir"]
+        else:
+            # No cadastro a conta nasce em aberto; o pagamento é registrado depois.
+            for name in ("status", "data_pagamento", "valor_pago"):
+                del self.fields[name]
+
+    def clean(self):
+        cleaned = super().clean()
+        status = cleaned.get("status")
+        if status == ContaPagar.Status.PAGO and not cleaned.get("data_pagamento"):
+            cleaned["data_pagamento"] = timezone.localdate()
+        if status and status != ContaPagar.Status.PAGO:
+            cleaned["data_pagamento"] = None
+            cleaned["valor_pago"] = None
+        return cleaned
+
+    def save(self, commit=True):
+        instance = super().save(commit=commit)
+        repetir = self.cleaned_data.get("repetir") or 1
+        if commit and not self.created_extra and repetir > 1:
+            base = instance.data_vencimento
+            for meses in range(1, repetir):
+                copia = ContaPagar.objects.get(pk=instance.pk)
+                copia.pk = None
+                copia.data_vencimento = somar_meses(base, meses)
+                copia.save()
+                self.created_extra.append(copia)
+        return instance
+
+
+class RegistrarPagamentoForm(forms.ModelForm):
+    class Meta:
+        model = ContaPagar
+        fields = ("data_pagamento", "valor_pago", "forma_pagamento")
+        widgets = {
+            "data_pagamento": forms.DateInput(attrs={"type": "date", "class": "form-control"}, format="%Y-%m-%d"),
+            "valor_pago": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0"}),
+            "forma_pagamento": forms.Select(attrs={"class": "form-select"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["data_pagamento"].required = True
+        if not self.initial.get("data_pagamento"):
+            self.initial["data_pagamento"] = timezone.localdate()
+        if self.instance.valor_pago is None:
+            self.initial["valor_pago"] = self.instance.valor
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.status = ContaPagar.Status.PAGO
+        if instance.valor_pago is None:
+            instance.valor_pago = instance.valor
+        if commit:
+            instance.save()
+        return instance
 
 
 class ProcessoForm(ERPModelForm):

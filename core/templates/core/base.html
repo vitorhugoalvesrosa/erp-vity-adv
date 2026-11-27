@@ -182,7 +182,7 @@
                 </nav>
             {% endif %}
 
-            {% if perms.financeiro.view_contareceber or perms.financeiro.view_pagamento or perms.juridico.view_honorario or perms.juridico.view_timesheet %}
+            {% if perms.financeiro.view_contareceber or perms.financeiro.view_contapagar or perms.juridico.view_honorario or perms.juridico.view_timesheet %}
                 <button class="nav-label nav-group-toggle" type="button" data-menu-group="finance" aria-expanded="true" aria-controls="nav-finance">
                     <span>Financeiro</span><span class="nav-group-indicator" aria-hidden="true"><svg class="icon"><use href="#icon-chevron-down"></use></svg></span>
                 </button>
@@ -190,6 +190,11 @@
                     {% if perms.financeiro.view_contareceber %}
                         <a class="nav-link {% if active_module == 'recebiveis' %}is-active{% endif %}" href="{% url 'record-list' module='recebiveis' %}">
                             <svg class="nav-icon" aria-hidden="true"><use href="#icon-receivable"></use></svg> Contas a receber
+                        </a>
+                    {% endif %}
+                    {% if perms.financeiro.view_contapagar %}
+                        <a class="nav-link {% if active_module == 'contas-pagar' %}is-active{% endif %}" href="{% url 'contas-pagar' %}">
+                            <svg class="nav-icon" aria-hidden="true"><use href="#icon-payment"></use></svg> Contas a pagar
                         </a>
                     {% endif %}
                     {% if perms.juridico.view_honorario %}
@@ -207,11 +212,7 @@
                             <svg class="nav-icon" aria-hidden="true"><use href="#icon-clock"></use></svg> Timesheet
                         </a>
                     {% endif %}
-                    {% if perms.financeiro.view_pagamento %}
-                        <a class="nav-link {% if active_module == 'pagamentos' %}is-active{% endif %}" href="{% url 'record-list' module='pagamentos' %}">
-                            <svg class="nav-icon" aria-hidden="true"><use href="#icon-payment"></use></svg> Pagamentos
-                        </a>
-                    {% endif %}
+
                 </nav>
             {% endif %}
 

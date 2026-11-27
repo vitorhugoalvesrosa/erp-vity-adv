@@ -1,0 +1,157 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Financeiro</p>
+            <h1>Contas a pagar</h1>
+            <p>Aluguel, folha, fornecedores, custas e impostos do escritório: o que vence, o que está atrasado e o que já foi pago.</p>
+        </div>
+        {% if can_add %}
+            <a class="button" href="{% url 'record-create' module='contas-pagar' %}"><svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg> Nova conta a pagar</a>
+        {% endif %}
+    </header>
+
+    <section class="kpi-strip ap-kpis" aria-label="Resumo das contas a pagar">
+        <a class="kpi{% if filtro == 'abertas' %} is-active{% endif %}" href="?f=abertas">
+            <span>Em aberto</span>
+            <strong class="num">R$ {{ kpis.abertas.total|floatformat:"2g" }}</strong>
+            <small>{{ kpis.abertas.quantidade }} conta{{ kpis.abertas.quantidade|pluralize }}</small>
+        </a>
+        <a class="kpi{% if kpis.atrasadas.quantidade %} kpi-danger{% endif %}{% if filtro == 'atrasadas' %} is-active{% endif %}" href="?f=atrasadas">
+            <span>Atrasadas</span>
+            <strong class="num">R$ {{ kpis.atrasadas.total|floatformat:"2g" }}</strong>
+            <small>{{ kpis.atrasadas.quantidade }} conta{{ kpis.atrasadas.quantidade|pluralize }}</small>
+        </a>
+        <a class="kpi{% if filtro == 'semana' %} is-active{% endif %}" href="?f=semana">
+            <span>Próximos 7 dias</span>
+            <strong class="num">R$ {{ kpis.semana.total|floatformat:"2g" }}</strong>
+            <small>{{ kpis.semana.quantidade }} conta{{ kpis.semana.quantidade|pluralize }}</small>
+        </a>
+        <a class="kpi{% if filtro == 'pagas' %} is-active{% endif %}" href="?f=pagas">
+            <span>Pagas neste mês</span>
+            <strong class="num">R$ {{ kpis.pagas_mes.total|floatformat:"2g" }}</strong>
+            <small>{{ kpis.pagas_mes.quantidade }} pagamento{{ kpis.pagas_mes.quantidade|pluralize }}</small>
+        </a>
+    </section>
+
+    <form class="ap-filters" method="get" role="search">
+        <nav class="wa-filters ap-chips" aria-label="Situação">
+            {% for valor, rotulo in filtros %}
+                <a class="chip{% if filtro == valor %} is-active{% endif %}" href="?f={{ valor }}{% if categoria %}&amp;categoria={{ categoria }}{% endif %}{% if mes %}&amp;mes={{ mes }}{% endif %}{% if busca %}&amp;q={{ busca|urlencode }}{% endif %}"{% if filtro == valor %} aria-current="true"{% endif %}>{{ rotulo }}</a>
+            {% endfor %}
+        </nav>
+        <input type="hidden" name="f" value="{{ filtro }}">
+        <div class="ap-filter-row">
+            <label class="visually-hidden" for="ap-categoria">Categoria</label>
+            <select class="form-select" id="ap-categoria" name="categoria" onchange="this.form.submit()">
+                <option value="">Todas as categorias</option>
+                {% for valor, rotulo in categorias %}<option value="{{ valor }}"{% if categoria == valor %} selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+            </select>
+            <label class="visually-hidden" for="ap-mes">Mês</label>
+            <input class="form-control" type="month" id="ap-mes" name="mes" value="{{ mes }}" onchange="this.form.submit()" title="{% if filtro == 'pagas' %}Mês do pagamento{% else %}Mês de vencimento{% endif %}">
+            <label class="visually-hidden" for="ap-busca">Buscar</label>
+            <input class="form-control" type="search" id="ap-busca" name="q" value="{{ busca }}" placeholder="Descrição, favorecido, cliente ou processo">
+            <button class="button button-secondary" type="submit">Filtrar</button>
+            {% if categoria or mes or busca %}<a class="text-link" href="?f={{ filtro }}">Limpar</a>{% endif %}
+        </div>
+    </form>
+
+    <section class="panel">
+        <div class="table-wrap">
+            <table class="data-table data-table-stack ap-table">
+                <thead>
+                    <tr>
+                        <th>{% if filtro == "pagas" %}Pago em{% else %}Vencimento{% endif %}</th>
+                        <th>Descrição</th>
+                        <th>Categoria</th>
+                        <th>Vínculo</th>
+                        <th class="cell-number">Valor</th>
+                        <th>Situação</th>
+                        {% if can_change or can_delete %}<th class="actions-col"><span class="visually-hidden">Ações</span></th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for conta in contas %}
+                        <tr class="ap-row-{{ conta.situacao }}">
+                            <td class="cell-date num" data-label="{% if filtro == 'pagas' %}Pago em{% else %}Vencimento{% endif %}">
+                                {% if filtro == "pagas" %}{{ conta.data_pagamento|date:"d/m/Y" }}{% else %}{{ conta.data_vencimento|date:"d/m/Y" }}{% endif %}
+                            </td>
+                            <td data-label="Descrição">
+                                <span class="ap-desc">
+                                    <strong>{{ conta.descricao }}</strong>
+                                    {% if conta.favorecido %}<small>{{ conta.favorecido }}</small>{% endif %}
+                                </span>
+                            </td>
+                            <td data-label="Categoria">{{ conta.get_categoria_display }}</td>
+                            <td data-label="Vínculo">
+                                {% if conta.processo %}<a class="text-link" href="{% url 'processo-ai' pk=conta.processo.pk %}">{{ conta.processo.numero_cnj }}</a>
+                                {% elif conta.cliente %}{{ conta.cliente.nome }}
+                                {% else %}<span class="cell-muted">—</span>{% endif %}
+                            </td>
+                            <td class="cell-number num" data-label="Valor">
+                                R$ {{ conta.valor_efetivo|floatformat:"2g" }}
+                                {% if conta.valor_pago is not None and conta.valor_pago != conta.valor %}<small class="ap-original">conta: R$ {{ conta.valor|floatformat:"2g" }}</small>{% endif %}
+                            </td>
+                            <td data-label="Situação">
+                                <span class="badge badge-{{ conta.tom }}">{{ conta.situacao_display }}</span>
+                                {% if conta.status == "pago" and filtro != "pagas" %}<small class="ap-paid-on">em {{ conta.data_pagamento|date:"d/m" }} · {{ conta.get_forma_pagamento_display }}</small>{% endif %}
+                            </td>
+                            {% if can_change or can_delete %}
+                                <td class="cell-actions">
+                                    <div class="row-actions">
+                                        {% if can_change and conta.status == "a_pagar" %}
+                                            <a class="button ap-pay" href="{% url 'conta-pagar-pagar' pk=conta.pk %}?next={{ request.get_full_path|urlencode }}">Pagar</a>
+                                        {% elif can_change and conta.status == "pago" %}
+                                            <form method="post" action="{% url 'conta-pagar-estornar' pk=conta.pk %}" data-confirm="Desfazer o pagamento de “{{ conta.descricao }}”? A conta volta para em aberto.">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                                <button class="text-link row-action-button" type="submit">Desfazer pagamento</button>
+                                            </form>
+                                        {% endif %}
+                                        {% if can_change %}<a class="text-link" href="{% url 'record-edit' module='contas-pagar' pk=conta.pk %}">Editar</a>{% endif %}
+                                        {% if can_delete %}<a class="text-link text-danger" href="{% url 'record-delete' module='contas-pagar' pk=conta.pk %}">Excluir</a>{% endif %}
+                                    </div>
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td class="cell-full" colspan="7">
+                                <div class="empty-state">
+                                    <span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#icon-{% if busca or categoria or mes %}search{% else %}payment{% endif %}"></use></svg></span>
+                                    <strong>{% if busca or categoria or mes %}Nada encontrado com esses filtros{% elif filtro == "atrasadas" %}Nenhuma conta atrasada{% elif filtro == "abertas" %}Nenhuma conta em aberto{% else %}Nenhuma conta aqui{% endif %}</strong>
+                                    <p>{% if can_add and filtro == "abertas" and not busca %}Cadastre o aluguel, a folha e as contas fixas para acompanhar os vencimentos.{% else %}Troque o filtro para ver outras contas.{% endif %}</p>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                {% if contas %}
+                    <tfoot>
+                        <tr>
+                            <td colspan="4" class="ap-total-label">Total {{ page_obj.paginator.count }} conta{{ page_obj.paginator.count|pluralize }}{% if filtro == "pagas" %} (valor pago){% endif %}</td>
+                            <td class="cell-number num ap-total">R$ {{ total_filtrado|floatformat:"2g" }}</td>
+                            <td colspan="{% if can_change or can_delete %}2{% else %}1{% endif %}"></td>
+                        </tr>
+                    </tfoot>
+                {% endif %}
+            </table>
+        </div>
+        {% if page_obj.paginator.num_pages > 1 %}
+            <footer class="pagination">
+                <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                <div class="pagination-actions">
+                    {% if page_obj.has_previous %}<a class="pagination-link" href="?{{ querystring }}&amp;page={{ page_obj.previous_page_number }}">Anterior</a>{% endif %}
+                    {% if page_obj.has_next %}<a class="pagination-link" href="?{{ querystring }}&amp;page={{ page_obj.next_page_number }}">Próxima</a>{% endif %}
+                </div>
+            </footer>
+        {% endif %}
+    </section>
+
+    <script>
+        document.querySelectorAll("form[data-confirm]").forEach((form) => {
+            form.addEventListener("submit", (event) => { if (!window.confirm(form.dataset.confirm)) event.preventDefault(); });
+        });
+    </script>
+{% endblock %}

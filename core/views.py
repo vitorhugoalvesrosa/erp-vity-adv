@@ -24,7 +24,7 @@ from reportlab.lib.units import mm
 from reportlab.platypus import Image, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from crm.models import Conta, Proposta
-from financeiro.models import Contrato, ContaReceber, Pagamento, PedidoVenda
+from financeiro.models import Contrato, ContaPagar, ContaReceber, PedidoVenda
 from juridico.models import (
     Atendimento,
     Audiencia,
@@ -41,25 +41,25 @@ from produtos.models import Produto
 from .email_config import get_smtp_settings
 from .configuration_forms import CompanyVisualIdentityForm
 from .forms import (
+    AtendimentoForm,
+    AudienciaForm,
     ContaForm,
+    ContaPagarForm,
     ContaReceberForm,
     ContratoForm,
-    EmailNoticeForm,
-    ERPPasswordResetForm,
-    PagamentoForm,
-    PedidoVendaForm,
-    ProdutoForm,
-    PropostaForm,
-    AudienciaForm,
-    AtendimentoForm,
     DespesaForm,
+    ERPPasswordResetForm,
+    EmailNoticeForm,
     HonorarioForm,
-    TimesheetForm,
     MovimentacaoForm,
+    PedidoVendaForm,
     PrazoForm,
     ProcessoForm,
+    ProdutoForm,
+    PropostaForm,
     PublicacaoForm,
     TarefaForm,
+    TimesheetForm,
 )
 from .models import CompanyProfile
 
@@ -375,20 +375,21 @@ MODULES = {
         "search": ("conta__nome",),
         "select_related": ("conta", "pedido_venda__proposta__conta"),
     },
-    "pagamentos": {
-        "title": "Pagamentos",
-        "singular": "pagamento",
+    "contas-pagar": {
+        "title": "Contas a pagar",
+        "singular": "conta a pagar",
+        "feminine": True,
         "app": "financeiro",
-        "model": Pagamento,
-        "form": PagamentoForm,
+        "model": ContaPagar,
+        "form": ContaPagarForm,
         "columns": [
-            ("conta_receber", "Conta", "text"),
+            ("data_vencimento", "Vencimento", "date"),
+            ("descricao", "Descrição", "text"),
             ("valor", "Valor", "currency"),
-            ("data_pagamento", "Data", "date"),
-            ("metodo_pagamento", "Método", "choice"),
+            ("status", "Status", "choice"),
         ],
-        "search": ("conta_receber__conta__nome",),
-        "select_related": ("conta_receber__conta",),
+        "search": ("descricao", "favorecido"),
+        "select_related": ("cliente", "processo"),
     },
 }
 
@@ -492,6 +493,19 @@ def home(request):
                 "kind": "currency",
                 "url": "record-list",
                 "module": "recebiveis",
+            }
+        )
+    if can_view(ContaPagar):
+        a_pagar = ContaPagar.objects.filter(status=ContaPagar.Status.A_PAGAR)
+        stats.append(
+            {
+                "label": "A pagar",
+                "value": a_pagar.aggregate(total=Sum("valor"))["total"] or 0,
+                "icon": "payment",
+                "tone": "amber",
+                "kind": "currency",
+                "url": "record-list",
+                "module": "contas-pagar",
             }
         )
     hoje = timezone.localdate()
@@ -760,6 +774,10 @@ def record_edit(request, module, pk=None):
     form = config["form"](**form_kwargs)
     if request.method == "POST" and form.is_valid():
         saved = form.save()
+        if not instance and hasattr(saved, "criado_por_id"):
+            # Registra quem criou (inclusive as cópias de contas repetidas).
+            for obj in [saved, *getattr(form, "created_extra", [])]:
+                type(obj).objects.filter(pk=obj.pk).update(criado_por=request.user)
         atendimento_id = request.GET.get("atendimento", "")
         if module == "processos" and not instance and atendimento_id.isdigit():
             Atendimento.objects.filter(pk=int(atendimento_id), cliente=saved.cliente).update(

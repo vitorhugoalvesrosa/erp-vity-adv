@@ -4255,3 +4255,134 @@ body[data-heading-font="cinzel"] .brand-copy small {
     font-family: "Cinzel", Georgia, "Times New Roman", serif;
     letter-spacing: 0.01em;
 }
+
+/* ---------- Contas a pagar ---------- */
+
+.ap-kpis .kpi small {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.ap-filters {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.ap-chips {
+    padding: 0;
+    border-bottom: 0;
+}
+
+.ap-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.ap-filter-row .form-select {
+    width: auto;
+    min-width: 200px;
+}
+
+.ap-filter-row input[type="month"] {
+    width: auto;
+}
+
+.ap-filter-row input[type="search"] {
+    flex: 1;
+    min-width: 220px;
+}
+
+.ap-desc {
+    display: grid;
+    gap: 2px;
+}
+
+.ap-desc strong {
+    color: var(--text);
+    font-weight: 600;
+}
+
+.ap-desc small,
+.ap-original,
+.ap-paid-on {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.ap-row-atrasado td:first-child {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.ap-pay {
+    min-height: 30px;
+    padding: 0 14px;
+    font-size: 13px;
+}
+
+.ap-table tfoot td {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border-strong);
+    background: var(--surface-2);
+}
+
+.ap-total-label {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.ap-total {
+    font-weight: 700;
+}
+
+.ap-summary h2 {
+    margin: 2px 0 10px;
+}
+
+.ap-summary dl {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+}
+
+.ap-summary dt {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.ap-summary dd {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin: 2px 0 0;
+}
+
+.ap-code {
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+    .ap-kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ap-kpis .kpi strong {
+        font-size: 18px;
+    }
+
+    .ap-filter-row .form-select,
+    .ap-filter-row input {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .ap-table tfoot td:empty {
+        display: none;
+    }
+}
