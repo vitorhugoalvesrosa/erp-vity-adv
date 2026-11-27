@@ -82,18 +82,18 @@
                 <a class="nav-link {% if active_module == 'dashboard' %}is-active{% endif %}" href="{% url 'home' %}">
                     <svg class="nav-icon" aria-hidden="true"><use href="#icon-overview"></use></svg> Visão geral
                 </a>
-                {% if perms.crm.view_conta %}
-                    <a class="nav-link {% if active_module == 'contas' %}is-active{% endif %}" href="{% url 'record-list' module='contas' %}">
-                        <svg class="nav-icon" aria-hidden="true"><use href="#icon-clients"></use></svg> Clientes
-                    </a>
-                {% endif %}
             </nav>
 
-            {% if perms.juridico.view_processo or perms.juridico.view_prazo or perms.juridico.view_tarefa or perms.juridico.view_publicacao or perms.juridico.view_audiencia or perms.juridico.view_atendimento %}
+            {% if perms.crm.view_conta or perms.juridico.view_processo or perms.juridico.view_prazo or perms.juridico.view_tarefa or perms.juridico.view_publicacao or perms.juridico.view_audiencia or perms.juridico.view_atendimento %}
                 <button class="nav-label nav-group-toggle" type="button" data-menu-group="juridico" aria-expanded="true" aria-controls="nav-juridico">
                     <span>Jurídico</span><span class="nav-group-indicator" aria-hidden="true"><svg class="icon"><use href="#icon-chevron-down"></use></svg></span>
                 </button>
                 <nav class="sidebar-nav" id="nav-juridico" aria-label="Jurídico">
+                    {% if perms.crm.view_conta %}
+                        <a class="nav-link {% if active_module == 'contas' %}is-active{% endif %}" href="{% url 'record-list' module='contas' %}">
+                            <svg class="nav-icon" aria-hidden="true"><use href="#icon-clients"></use></svg> Clientes
+                        </a>
+                    {% endif %}
                     {% if perms.juridico.view_processo %}
                         <a class="nav-link {% if active_module == 'processos' %}is-active{% endif %}" href="{% url 'record-list' module='processos' %}">
                             <svg class="nav-icon" aria-hidden="true"><use href="#icon-process"></use></svg> Processos
