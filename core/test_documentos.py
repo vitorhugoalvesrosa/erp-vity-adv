@@ -170,3 +170,17 @@ class DocumentosClienteTests(TestCase):
         self.client.force_login(self.operator)
         response = self.client.get(reverse("cliente-documentos-lote", args=[self.pf.pk]), {"formato": "pdf"}, follow=True)
         self.assertContains(response, "Selecione ao menos um documento")
+
+    def test_procuracao_sai_com_o_logo_do_escritorio(self):
+        from pypdf import PdfReader
+
+        self.client.force_login(self.operator)
+        procuracao = self.modelo("Procuração — pessoa física")
+        pdf = PdfReader(BytesIO(self.gerar(self.pf, procuracao, formato="pdf").content))
+        self.assertEqual(len(pdf.pages[0].images), 1)
+        word = Document(BytesIO(self.gerar(self.pf, procuracao).content))
+        self.assertEqual(len(word.sections[0].header.part.package.image_parts), 1)
+        # A declaração segue o original: sem logo.
+        declaracao = self.modelo("Declaração de hipossuficiência — pessoa física")
+        pdf = PdfReader(BytesIO(self.gerar(self.pf, declaracao, formato="pdf").content))
+        self.assertEqual(len(pdf.pages[0].images), 0)

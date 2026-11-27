@@ -1,6 +1,7 @@
 """Documentos do cliente: procurações e declarações preenchidas com a qualificação."""
 
 import zipfile
+from pathlib import Path
 from io import BytesIO
 
 from django.contrib import messages
@@ -75,7 +76,16 @@ def cliente_documento_gerar(request, pk, modelo_pk, formato):
     return response
 
 
+LOGO_DOCUMENTOS = Path(__file__).resolve().parent.parent / "juridico" / "assets" / "logo-documentos.png"
+
+
 def _logo():
+    """Logo dos documentos gerados: o do escritório (Benites Silva), guardado no sistema.
+
+    Sem o arquivo, usa o logo enviado em Identidade visual.
+    """
+    if LOGO_DOCUMENTOS.exists():
+        return LOGO_DOCUMENTOS.read_bytes()
     perfil = CompanyProfile.objects.first()
     return bytes(perfil.logo_data) if perfil and perfil.has_logo else None
 
