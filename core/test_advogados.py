@@ -187,3 +187,39 @@ class AdvogadosTests(TestCase):
 
     def test_formatar_cnj(self):
         self.assertEqual(djen.formatar_cnj("00012345620258190001"), CNJ_EXISTENTE)
+
+    @override_settings(DJEN_BASE_URL="  https://proxy.exemplo/api/comunicacao/ \n", DJEN_PROXY_TOKEN=" segredo ")
+    def test_espacos_colados_nas_variaveis_sao_ignorados(self):
+        pedidos = []
+
+        def falso_urlopen(request, timeout):
+            pedidos.append(request)
+            return Resposta({"count": 0, "items": []})
+
+        with mock.patch.object(djen, "urlopen", falso_urlopen):
+            djen.buscar_publicacoes("12345", "RJ")
+        self.assertTrue(pedidos[0].full_url.startswith("https://proxy.exemplo/api/comunicacao?"))
+        self.assertEqual(pedidos[0].get_header("X-proxy-token"), "segredo")
+
+    @override_settings(DJEN_BASE_URL="proxy.exemplo/api/comunicacao")
+    def test_endereco_sem_https_vira_mensagem_e_nao_erro_500(self):
+        self.client.force_login(self.manager)
+        response = self.client.post(reverse("advogado-buscar-djen", args=[self.advogado.pk]), follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "DJEN_BASE_URL está inválido")
+
+    @override_settings(DJEN_BASE_URL="https://proxy.exemplo/api/comunicacao", DJEN_PROXY_TOKEN="errado")
+    def test_senha_errada_do_ponto_de_acesso(self):
+        erro = HTTPError("https://proxy.exemplo", 401, "Unauthorized", {}, BytesIO(b"{}"))
+        self.client.force_login(self.manager)
+        with mock.patch.object(djen, "urlopen", side_effect=erro):
+            response = self.client.post(reverse("advogado-buscar-djen", args=[self.advogado.pk]), follow=True)
+        self.assertContains(response, "recusou a senha")
+
+    def test_falha_inesperada_nao_vira_erro_500(self):
+        self.client.force_login(self.manager)
+        with mock.patch("core.advogados_views.sincronizar_advogado", side_effect=KeyError("x")), \
+                self.assertLogs("core.advogados_views", level="ERROR"):
+            response = self.client.post(reverse("advogado-buscar-djen", args=[self.advogado.pk]), follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Erro inesperado na busca (KeyError)")

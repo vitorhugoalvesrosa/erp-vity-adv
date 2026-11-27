@@ -1,5 +1,7 @@
 """Ficha do advogado: processos vinculados e busca dos processos da OAB no DJEN."""
 
+import logging
+
 from urllib.parse import urlencode
 
 from django.conf import settings
@@ -12,6 +14,8 @@ from django.views.decorators.http import require_POST
 
 from juridico.djen import DJENErro, sincronizar_advogado
 from juridico.models import Advogado, ProcessoEncontrado
+
+logger = logging.getLogger(__name__)
 
 PERIODOS = ((30, "Últimos 30 dias"), (90, "Últimos 3 meses"), (180, "Últimos 6 meses"), (365, "Último ano"))
 
@@ -83,6 +87,12 @@ def advogado_buscar_djen(request, pk):
         resumo = sincronizar_advogado(advogado, dias=dias)
     except DJENErro as exc:
         messages.error(request, str(exc))
+    except Exception as exc:  # nunca deixar a busca virar erro 500
+        logger.exception("Falha inesperada na busca do DJEN para o advogado %s", advogado.pk)
+        messages.error(
+            request,
+            f"Erro inesperado na busca ({type(exc).__name__}). Tente de novo; se repetir, verifique o log do Render.",
+        )
     else:
         if not resumo["processos"]:
             messages.info(request, f"Nenhuma publicação da {advogado.oab} no período no DJEN.")

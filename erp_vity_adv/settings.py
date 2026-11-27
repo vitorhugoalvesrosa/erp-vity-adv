@@ -223,3 +223,15 @@ if EMAIL_USE_TLS and EMAIL_USE_SSL:
     raise ValueError("Configure apenas um entre EMAIL_USE_TLS e EMAIL_USE_SSL.")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Erros vão para o console: no Render aparecem em Logs (sem isso, o 500 não deixa rastro).
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"simples": {"format": "%(levelname)s %(name)s: %(message)s"}},
+    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "simples"}},
+    "root": {"handlers": ["console"], "level": "WARNING"},
+    "loggers": {
+        "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
+    },
+}

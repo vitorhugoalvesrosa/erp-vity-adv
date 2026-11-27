@@ -7,6 +7,7 @@ EUA), aponte DJEN_BASE_URL para um ponto de acesso no Brasil — veja deploy/dje
 import json
 import time
 from datetime import date, timedelta
+from http.client import HTTPException
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -33,7 +34,17 @@ class DJENBloqueado(DJENErro):
 
 
 def _url_base():
-    return getattr(settings, "DJEN_BASE_URL", "") or URL_OFICIAL
+    url = (getattr(settings, "DJEN_BASE_URL", "") or "").strip() or URL_OFICIAL
+    if not url.startswith("https://") or any(ch.isspace() for ch in url):
+        raise DJENErro(
+            "DJEN_BASE_URL está inválido. Use o endereço completo, começando com https:// e terminando em "
+            "/api/comunicacao, sem espaços (ex.: https://seu-projeto.vercel.app/api/comunicacao)."
+        )
+    return url.rstrip("/")
+
+
+def _usa_proxy():
+    return _url_base() != URL_OFICIAL
 
 
 def formatar_cnj(numero):
@@ -46,7 +57,9 @@ def formatar_cnj(numero):
 def _get(params, espera=time.sleep):
     url = f"{_url_base()}?{urlencode(params)}"
     headers = {"Accept": "application/json", "User-Agent": "ERP-Vity-ADV/1.0"}
-    token = getattr(settings, "DJEN_PROXY_TOKEN", "")
+    token = (getattr(settings, "DJEN_PROXY_TOKEN", "") or "").strip()
+    if token and not token.isascii():
+        raise DJENErro("DJEN_PROXY_TOKEN tem acentos ou caracteres especiais. Use só letras sem acento e números.")
     if token:
         headers["X-Proxy-Token"] = token
     for tentativa in range(3):
@@ -55,7 +68,23 @@ def _get(params, espera=time.sleep):
                 corpo = resposta.read()
                 restante = resposta.headers.get("x-ratelimit-remaining")
         except HTTPError as exc:
+            proxy = _usa_proxy()
+            if exc.code == 401 and proxy:
+                raise DJENErro(
+                    "O ponto de acesso recusou a senha: DJEN_PROXY_TOKEN no Render precisa ser igual ao "
+                    "PROXY_TOKEN na Vercel (e a Vercel precisa de um novo Deploy depois de criar a variável)."
+                ) from exc
+            if exc.code == 404 and proxy:
+                raise DJENErro(
+                    "Endereço do ponto de acesso não encontrado. Confira se DJEN_BASE_URL termina em "
+                    "/api/comunicacao e se o Root Directory na Vercel é deploy/djen-proxy."
+                ) from exc
             if exc.code == 403:
+                if proxy:
+                    raise DJENBloqueado(
+                        "O acesso foi recusado (403). Na Vercel, desligue a proteção do projeto em "
+                        "Settings → Deployment Protection, ou confira se a função está na região de São Paulo (gru1)."
+                    ) from exc
                 raise DJENBloqueado(
                     "O DJEN recusou o acesso (ele só atende conexões do Brasil). "
                     "Configure o ponto de acesso no Brasil (DJEN_BASE_URL)."
@@ -63,9 +92,12 @@ def _get(params, espera=time.sleep):
             if exc.code in (429, 503) and tentativa < 2:
                 espera(20)
                 continue
-            raise DJENErro(f"O DJEN respondeu com erro {exc.code}.") from exc
-        except (URLError, TimeoutError, OSError) as exc:
-            raise DJENErro("Não foi possível conectar ao DJEN. Tente de novo em alguns minutos.") from exc
+            raise DJENErro(f"O DJEN respondeu com erro {exc.code}. Tente de novo em alguns minutos.") from exc
+        except (URLError, TimeoutError, OSError, HTTPException, ValueError) as exc:
+            raise DJENErro(
+                f"Não foi possível conectar ao {'ponto de acesso' if _usa_proxy() else 'DJEN'} "
+                f"({type(exc).__name__}). Confira DJEN_BASE_URL e tente de novo."
+            ) from exc
         try:
             dados = json.loads(corpo)
         except ValueError as exc:
