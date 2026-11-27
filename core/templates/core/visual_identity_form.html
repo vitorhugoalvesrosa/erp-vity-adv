@@ -33,18 +33,78 @@
             {% if form.non_field_errors %}<div class="form-error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
             <div class="form-grid">
                 {% for field in form %}
-                    <div class="form-field {% if field.name == 'logo' %}is-wide{% endif %}">
-                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                        {{ field }}
-                        {{ field.errors }}
-                        {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
-                    </div>
+                    {% if field.name in "primary_color sidebar_color accent_color" %}
+                        <div class="form-field">
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            <div class="color-field{% if field.errors %} is-invalid{% endif %}" data-color-field="{{ field.name }}">
+                                <input class="color-swatch" type="color" value="{{ field.value|default:'#000000' }}" aria-label="Escolher {{ field.label|lower }} na paleta" data-color-picker>
+                                {{ field }}
+                            </div>
+                            <span class="color-rgb num" data-color-rgb aria-live="polite"></span>
+                            {{ field.errors }}
+                        </div>
+                    {% else %}
+                        <div class="form-field {% if field.name == 'logo' %}is-wide{% endif %}">
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {{ field.errors }}
+                            {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
+                        </div>
+                    {% endif %}
                 {% endfor %}
             </div>
+            <p class="helptext color-help">Digite o código hexadecimal (ex.: <code>#0B7A83</code>) ou RGB (ex.: <code>11, 122, 131</code>), ou clique na amostra para escolher na paleta. As cores são salvas em hexadecimal.</p>
             <div class="form-actions">
                 <a class="button button-secondary" href="{% url 'admin-settings' %}">Cancelar</a>
                 <button class="button" type="submit">Salvar identidade</button>
             </div>
         </form>
     </section>
+
+    <script>
+        (() => {
+            const preview = document.querySelector(".branding-preview");
+            const previewVar = { primary_color: "--preview-primary", sidebar_color: "--preview-sidebar", accent_color: "--preview-accent" };
+            const toHex = (value) => {
+                const text = value.trim();
+                let match = text.match(/^#?([0-9a-f]{6}|[0-9a-f]{3})$/i);
+                if (match) {
+                    let digits = match[1];
+                    if (digits.length === 3) digits = digits.split("").map((c) => c + c).join("");
+                    return `#${digits.toUpperCase()}`;
+                }
+                match = text.match(/^(?:rgba?\s*\(\s*)?(\d{1,3})\s*[,;\s]\s*(\d{1,3})\s*[,;\s]\s*(\d{1,3})\s*\)?$/i);
+                if (match) {
+                    const channels = match.slice(1, 4).map(Number);
+                    if (channels.every((n) => n <= 255)) return "#" + channels.map((n) => n.toString(16).padStart(2, "0")).join("").toUpperCase();
+                }
+                return null;
+            };
+            const toRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(", ");
+            document.querySelectorAll("[data-color-field]").forEach((wrapper) => {
+                const name = wrapper.dataset.colorField;
+                const picker = wrapper.querySelector("[data-color-picker]");
+                const input = wrapper.querySelector("[data-color-input]");
+                const rgb = wrapper.parentElement.querySelector("[data-color-rgb]");
+                const apply = (hex) => {
+                    picker.value = hex.toLowerCase();
+                    rgb.textContent = `HEX ${hex} · RGB ${toRgb(hex)}`;
+                    wrapper.classList.remove("is-invalid");
+                    input.setCustomValidity("");
+                    if (preview) preview.style.setProperty(previewVar[name], hex);
+                };
+                input.addEventListener("input", () => {
+                    const hex = toHex(input.value);
+                    if (hex) { apply(hex); return; }
+                    wrapper.classList.toggle("is-invalid", input.value.trim() !== "");
+                    rgb.textContent = input.value.trim() ? "Use #RRGGBB ou R, G, B (0 a 255)" : "";
+                    input.setCustomValidity(input.value.trim() ? "Cor inválida" : "");
+                });
+                input.addEventListener("blur", () => { const hex = toHex(input.value); if (hex) input.value = hex; });
+                picker.addEventListener("input", () => { input.value = picker.value.toUpperCase(); apply(input.value); });
+                const initial = toHex(input.value);
+                if (initial) apply(initial);
+            });
+        })();
+    </script>
 {% endblock %}

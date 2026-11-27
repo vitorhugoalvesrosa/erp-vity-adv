@@ -4121,3 +4121,64 @@ datalist + .form-section-title {
     justify-self: start;
     font-size: 13px;
 }
+
+/* ---------- Identidade visual: cores ---------- */
+
+.color-field {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.color-field .color-code-input {
+    flex: 1;
+    min-width: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    text-transform: uppercase;
+}
+
+.color-swatch {
+    width: 44px;
+    height: auto;
+    min-height: 40px;
+    flex: none;
+    padding: 3px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--surface);
+    cursor: pointer;
+}
+
+.color-swatch::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.color-swatch::-webkit-color-swatch {
+    border: 0;
+    border-radius: 4px;
+}
+
+.color-swatch::-moz-color-swatch {
+    border: 0;
+    border-radius: 4px;
+}
+
+.record-form-panel .color-field.is-invalid input.color-code-input[data-color-input]:not([type="color"]),
+.color-field.is-invalid .color-code-input {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 15%, transparent);
+}
+
+.color-rgb {
+    min-height: 18px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.color-field.is-invalid + .color-rgb {
+    color: var(--danger);
+}
+
+.color-help {
+    margin-top: 12px;
+}

@@ -11,6 +11,29 @@ from core.secure_storage import encrypt_bytes, encrypt_text, validate_encryption
 
 
 LOGO_CONTENT_TYPES = {"PNG": "image/png", "JPEG": "image/jpeg", "WEBP": "image/webp"}
+COLOR_FIELDS = ("primary_color", "sidebar_color", "accent_color")
+COLOR_HELP = "Digite o código hexadecimal (#0B7A83) ou RGB (11, 122, 131), ou escolha na paleta."
+
+
+def parse_color(value):
+    """Converte #RGB, #RRGGBB, RRGGBB, rgb(r, g, b) ou "r, g, b" em #RRGGBB."""
+    text = (value or "").strip()
+    hex_match = re.fullmatch(r"#?([0-9a-fA-F]{6}|[0-9a-fA-F]{3})", text)
+    if hex_match:
+        digits = hex_match.group(1)
+        if len(digits) == 3:
+            digits = "".join(ch * 2 for ch in digits)
+        return f"#{digits.upper()}"
+    rgb_match = re.fullmatch(
+        r"(?:rgba?\s*\(\s*)?(\d{1,3})\s*[,;\s]\s*(\d{1,3})\s*[,;\s]\s*(\d{1,3})\s*\)?",
+        text,
+        re.IGNORECASE,
+    )
+    if rgb_match:
+        channels = [int(part) for part in rgb_match.groups()]
+        if all(0 <= channel <= 255 for channel in channels):
+            return "#" + "".join(f"{channel:02X}" for channel in channels)
+    raise ValidationError("Cor inválida. Use #RRGGBB (ex.: #0B7A83) ou R, G, B de 0 a 255 (ex.: 11, 122, 131).")
 
 
 class CompanyProfileForm(forms.ModelForm):
@@ -35,34 +58,44 @@ class CompanyProfileForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for field_name in ("primary_color", "sidebar_color", "accent_color"):
-            self.fields[field_name].required = False
-            self.fields[field_name].widget = forms.TextInput(
-                attrs={"type": "color", "class": "vTextField"}
+        for field_name in COLOR_FIELDS:
+            field = self.fields[field_name]
+            field.required = False
+            # O modelo guarda #RRGGBB; o formulário também aceita RGB e converte em _clean_color.
+            field.max_length = 32
+            field.validators = []
+            field.help_text = COLOR_HELP
+            field.widget = forms.TextInput(
+                attrs={
+                    "class": "vTextField color-code-input",
+                    "data-color-input": field_name,
+                    "maxlength": "32",
+                    "placeholder": "#0B7A83 ou 11, 122, 131",
+                    "autocomplete": "off",
+                    "spellcheck": "false",
+                }
             )
         if not self.instance.has_logo:
             del self.fields["remove_logo"]
 
+    def _clean_color(self, field_name):
+        value = self.cleaned_data.get(field_name)
+        if not value:
+            return (
+                getattr(self.instance, field_name)
+                if self.instance.pk
+                else CompanyProfile._meta.get_field(field_name).get_default()
+            )
+        return parse_color(value)
+
     def clean_primary_color(self):
-        return self.cleaned_data.get("primary_color") or (
-            self.instance.primary_color
-            if self.instance.pk
-            else CompanyProfile._meta.get_field("primary_color").get_default()
-        )
+        return self._clean_color("primary_color")
 
     def clean_accent_color(self):
-        return self.cleaned_data.get("accent_color") or (
-            self.instance.accent_color
-            if self.instance.pk
-            else CompanyProfile._meta.get_field("accent_color").get_default()
-        )
+        return self._clean_color("accent_color")
 
     def clean_sidebar_color(self):
-        return self.cleaned_data.get("sidebar_color") or (
-            self.instance.sidebar_color
-            if self.instance.pk
-            else CompanyProfile._meta.get_field("sidebar_color").get_default()
-        )
+        return self._clean_color("sidebar_color")
 
     def clean_logo(self):
         logo = self.cleaned_data.get("logo")

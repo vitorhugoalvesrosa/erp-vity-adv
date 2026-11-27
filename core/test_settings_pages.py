@@ -156,3 +156,35 @@ class SettingsPagesTests(TestCase):
         arquivo = SimpleUploadedFile("empresa.pfx", make_certificate(days=10), content_type="application/x-pkcs12")
         self.client.post(reverse("certificate-settings"), {"certificate_file": arquivo, "certificate_password": "senha-certificado"})
         self.assertContains(self.client.get(reverse("certificate-settings")), "Vence em breve")
+
+
+class VisualIdentityColorTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin = get_user_model().objects.create_superuser("cor-admin", "cor@example.com", "test-password")
+
+    def post(self, **colors):
+        data = {"legal_name": "Benites e Silva", "cnpj": "11669089000101"}
+        data.update(colors)
+        self.client.force_login(self.admin)
+        return self.client.post(reverse("visual-identity"), data)
+
+    def test_aceita_hexadecimal_e_rgb(self):
+        response = self.post(primary_color="11, 122, 131", sidebar_color="rgb(13, 59, 69)", accent_color="f08a4b")
+        self.assertRedirects(response, reverse("visual-identity"))
+        profile = CompanyProfile.objects.get()
+        self.assertEqual(
+            (profile.primary_color, profile.sidebar_color, profile.accent_color),
+            ("#0B7A83", "#0D3B45", "#F08A4B"),
+        )
+
+    def test_recusa_cor_invalida(self):
+        response = self.post(primary_color="300, 0, 0", sidebar_color="#0D3B45", accent_color="azul")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Cor inválida. Use #RRGGBB", count=2)
+        self.assertFalse(CompanyProfile.objects.exists())
+
+    def test_campo_vazio_mantem_a_cor_atual(self):
+        CompanyProfile.objects.create(legal_name="X", cnpj="11669089000101", primary_color="#123456")
+        self.post(primary_color="", sidebar_color="#0D3B45", accent_color="#F08A4B")
+        self.assertEqual(CompanyProfile.objects.get().primary_color, "#123456")
