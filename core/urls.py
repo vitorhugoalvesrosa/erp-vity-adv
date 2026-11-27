@@ -61,6 +61,7 @@ urlpatterns = [
     path("app/advogados/<int:pk>/buscar-djen/", advogados_views.advogado_buscar_djen, name="advogado-buscar-djen"),
     path("app/djen/encontrados/<int:pk>/", advogados_views.encontrado_situacao, name="encontrado-situacao"),
     path("app/contas/<int:pk>/documentos/", documentos_views.cliente_documentos, name="cliente-documentos"),
+    path("app/contas/<int:pk>/documentos/lote/", documentos_views.cliente_documentos_lote, name="cliente-documentos-lote"),
     path(
         "app/contas/<int:pk>/documentos/<int:modelo_pk>.<str:formato>",
         documentos_views.cliente_documento_gerar,

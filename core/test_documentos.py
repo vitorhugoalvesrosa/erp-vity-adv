@@ -134,3 +134,39 @@ class DocumentosClienteTests(TestCase):
             reverse("cliente-documento-gerar", args=[self.pf.pk, self.modelo("Procuração — pessoa física").pk, "exe"])
         )
         self.assertEqual(response.status_code, 404)
+
+    def test_baixar_selecionados_em_pdf_junta_num_arquivo(self):
+        from pypdf import PdfReader
+
+        self.client.force_login(self.operator)
+        modelos = ModeloDocumento.objects.filter(aplica_a="pf")
+        response = self.client.get(
+            reverse("cliente-documentos-lote", args=[self.pf.pk]),
+            {"formato": "pdf", "modelos": [m.pk for m in modelos]},
+        )
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertIn("attachment", response["Content-Disposition"])
+        leitor = PdfReader(BytesIO(response.content))
+        self.assertEqual(len(leitor.pages), 2)
+        texto = " ".join(pagina.extract_text() for pagina in leitor.pages)
+        self.assertIn("PROCURAÇÃO", texto)
+        self.assertIn("DECLARAÇÃO", texto)
+
+    def test_baixar_todos_em_word_vem_em_zip_e_ignora_outro_tipo(self):
+        import zipfile
+
+        self.client.force_login(self.operator)
+        pj_modelo = ModeloDocumento.objects.filter(aplica_a="pj").first()
+        response = self.client.get(
+            reverse("cliente-documentos-lote", args=[self.pf.pk]),
+            {"formato": "docx", "todos": "1", "modelos": [pj_modelo.pk]},
+        )
+        self.assertEqual(response["Content-Type"], "application/zip")
+        nomes = zipfile.ZipFile(BytesIO(response.content)).namelist()
+        self.assertEqual(len(nomes), 2)
+        self.assertTrue(all(nome.endswith(".docx") and "pessoa-fisica" in nome for nome in nomes))
+
+    def test_sem_selecao_volta_com_aviso(self):
+        self.client.force_login(self.operator)
+        response = self.client.get(reverse("cliente-documentos-lote", args=[self.pf.pk]), {"formato": "pdf"}, follow=True)
+        self.assertContains(response, "Selecione ao menos um documento")

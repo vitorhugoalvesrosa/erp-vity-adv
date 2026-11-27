@@ -111,7 +111,7 @@ def _paragrafos(corpo):
 def nome_arquivo(modelo, conta, extensao):
     from django.utils.text import slugify
 
-    return f"{slugify(modelo.nome)[:40]}-{slugify(conta.nome)[:40]}.{extensao}"
+    return f"{slugify(modelo.nome)[:60]}-{slugify(conta.nome)[:40]}.{extensao}"
 
 
 # --- PDF ---------------------------------------------------------------------------------

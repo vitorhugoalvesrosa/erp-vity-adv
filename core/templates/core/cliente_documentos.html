@@ -30,44 +30,90 @@
             </div>
             {% if can_edit_modelos %}<a class="text-link" href="{% url 'record-list' module='modelos-documentos' %}">Editar modelos</a>{% endif %}
         </div>
-        <label class="doc-data form-checkbox-row" for="doc-data-branco">
-            <input class="form-checkbox" type="checkbox" id="doc-data-branco" data-doc-data>
-            Deixar a data em branco (para preencher na assinatura)
-        </label>
-        <ul class="doc-list">
-            {% for modelo in modelos %}
-                <li class="doc-item">
-                    <div class="doc-info">
-                        <strong>{{ modelo.nome }}</strong>
-                        {% if modelo.faltando %}
-                            <small class="text-warning-strong">Faltam no cadastro: {{ modelo.faltando|join:", " }}</small>
-                        {% else %}
-                            <small class="cf-entrada">Cadastro completo para este documento</small>
-                        {% endif %}
+        <form method="get" action="{% url 'cliente-documentos-lote' pk=conta.pk %}" data-doc-form>
+            <div class="doc-toolbar">
+                {% if modelos %}
+                    <label class="doc-check doc-check-all" for="doc-todos">
+                        <input class="form-checkbox" type="checkbox" id="doc-todos" data-doc-all>
+                        Selecionar todos
+                    </label>
+                {% endif %}
+                <label class="doc-data" for="doc-data-branco">
+                    <input class="form-checkbox" type="checkbox" id="doc-data-branco" name="data" value="branco" data-doc-data>
+                    Deixar a data em branco
+                </label>
+            </div>
+            <ul class="doc-list">
+                {% for modelo in modelos %}
+                    <li class="doc-item">
+                        <label class="doc-check" for="doc-modelo-{{ modelo.pk }}">
+                            <input class="form-checkbox" type="checkbox" id="doc-modelo-{{ modelo.pk }}" name="modelos" value="{{ modelo.pk }}" data-doc-item>
+                            <span class="doc-info">
+                                <strong>{{ modelo.nome }}</strong>
+                                {% if modelo.faltando %}
+                                    <small class="text-warning-strong">Faltam no cadastro: {{ modelo.faltando|join:", " }}</small>
+                                {% else %}
+                                    <small class="cf-entrada">Cadastro completo para este documento</small>
+                                {% endif %}
+                            </span>
+                        </label>
+                        <div class="doc-actions">
+                            <a class="button button-secondary" href="{% url 'cliente-documento-gerar' pk=conta.pk modelo_pk=modelo.pk formato='pdf' %}" target="_blank" rel="noopener" data-doc-link>PDF</a>
+                            <a class="button button-secondary" href="{% url 'cliente-documento-gerar' pk=conta.pk modelo_pk=modelo.pk formato='docx' %}" data-doc-link>Word</a>
+                        </div>
+                    </li>
+                {% empty %}
+                    <li class="muted doc-item">Nenhum modelo ativo para {{ conta.get_tipo_pessoa_display|lower }}.</li>
+                {% endfor %}
+            </ul>
+            {% if modelos %}
+                <div class="doc-download">
+                    <fieldset class="doc-formato">
+                        <legend class="visually-hidden">Formato</legend>
+                        <label><input type="radio" name="formato" value="pdf" checked> PDF <small>(um arquivo, pronto para imprimir)</small></label>
+                        <label><input type="radio" name="formato" value="docx"> Word <small>(.zip, um arquivo por documento)</small></label>
+                    </fieldset>
+                    <div class="doc-download-actions">
+                        <button class="button" type="submit" data-doc-selected disabled>
+                            <svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg>
+                            Baixar selecionados <span class="num" data-doc-count>(0)</span>
+                        </button>
+                        <button class="button button-secondary" type="submit" name="todos" value="1">Baixar todos</button>
                     </div>
-                    <div class="doc-actions">
-                        <a class="button" href="{% url 'cliente-documento-gerar' pk=conta.pk modelo_pk=modelo.pk formato='pdf' %}" target="_blank" rel="noopener" data-doc-link><svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg> PDF</a>
-                        <a class="button button-secondary" href="{% url 'cliente-documento-gerar' pk=conta.pk modelo_pk=modelo.pk formato='docx' %}" data-doc-link>Word</a>
-                    </div>
-                </li>
-            {% empty %}
-                <li class="muted doc-item">Nenhum modelo ativo para {{ conta.get_tipo_pessoa_display|lower }}.</li>
-            {% endfor %}
-        </ul>
+                </div>
+            {% endif %}
+        </form>
     </section>
 
     <script>
         (() => {
-            const toggle = document.querySelector("[data-doc-data]");
-            if (!toggle) return;
+            const form = document.querySelector("[data-doc-form]");
+            if (!form) return;
+            const toggle = form.querySelector("[data-doc-data]");
+            const all = form.querySelector("[data-doc-all]");
+            const items = [...form.querySelectorAll("[data-doc-item]")];
+            const selectedButton = form.querySelector("[data-doc-selected]");
+            const count = form.querySelector("[data-doc-count]");
+            const update = () => {
+                const marked = items.filter((item) => item.checked).length;
+                if (count) count.textContent = `(${marked})`;
+                if (selectedButton) selectedButton.disabled = marked === 0;
+                if (all) {
+                    all.checked = marked === items.length && marked > 0;
+                    all.indeterminate = marked > 0 && marked < items.length;
+                }
+            };
+            items.forEach((item) => item.addEventListener("change", update));
+            if (all) all.addEventListener("change", () => { items.forEach((item) => { item.checked = all.checked; }); update(); });
             toggle.addEventListener("change", () => {
-                document.querySelectorAll("[data-doc-link]").forEach((link) => {
+                form.querySelectorAll("[data-doc-link]").forEach((link) => {
                     const url = new URL(link.href, window.location.href);
                     if (toggle.checked) url.searchParams.set("data", "branco");
                     else url.searchParams.delete("data");
                     link.href = url.pathname + url.search;
                 });
             });
+            update();
         })();
     </script>
 {% endblock %}
