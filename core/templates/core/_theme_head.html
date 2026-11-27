@@ -6,5 +6,9 @@
         if (savedTheme === "dark" || savedTheme === "light") {
             document.documentElement.dataset.theme = savedTheme;
         }
+        // Menu recolhido (só ícones): aplicado antes de desenhar a página, sem "piscar".
+        if (window.localStorage.getItem("erp-vity-adv-sidebar-rail") === "true") {
+            document.documentElement.classList.add("menu-rail");
+        }
     } catch (error) {}
 </script>

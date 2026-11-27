@@ -51,6 +51,7 @@
         <symbol id="icon-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
         <symbol id="icon-download" viewBox="0 0 24 24"><path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></symbol>
         <symbol id="icon-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2Z"/></symbol>
+        <symbol id="icon-collapse" viewBox="0 0 24 24"><path d="m11 17-5-5 5-5M18 17l-5-5 5-5"/></symbol>
         <symbol id="icon-gavel" viewBox="0 0 24 24"><path d="m14 4 6 6M11 7l6 6M12.5 5.5l-6 6 6 6 6-6M9.5 14.5 3 21M4 21h9"/></symbol>
     </svg>
     <div class="app-shell">
@@ -64,6 +65,16 @@
                 <span class="brand-copy">{{ company_display_name }}<small>Gestão integrada</small></span>
             </a>
 
+            <div class="sidebar-search" role="search">
+                <svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg>
+                <label class="visually-hidden" for="menu-busca">Buscar no menu</label>
+                <input id="menu-busca" type="search" placeholder="Buscar no menu" autocomplete="off" data-menu-search>
+            </div>
+            <button class="nav-link sidebar-search-rail" type="button" data-menu-search-open aria-label="Buscar no menu">
+                <svg class="nav-icon" aria-hidden="true"><use href="#icon-search"></use></svg> Buscar no menu
+            </button>
+            <p class="sidebar-search-empty" data-menu-empty hidden>Nenhum item encontrado.</p>
+
             <button class="nav-label nav-group-toggle" type="button" data-menu-group="workspace" aria-expanded="true" aria-controls="nav-workspace">
                 <span>Workspace</span><span class="nav-group-indicator" aria-hidden="true"><svg class="icon"><use href="#icon-chevron-down"></use></svg></span>
             </button>
@@ -71,6 +82,11 @@
                 <a class="nav-link {% if active_module == 'dashboard' %}is-active{% endif %}" href="{% url 'home' %}">
                     <svg class="nav-icon" aria-hidden="true"><use href="#icon-overview"></use></svg> Visão geral
                 </a>
+                {% if perms.crm.view_conta %}
+                    <a class="nav-link {% if active_module == 'contas' %}is-active{% endif %}" href="{% url 'record-list' module='contas' %}">
+                        <svg class="nav-icon" aria-hidden="true"><use href="#icon-clients"></use></svg> Clientes
+                    </a>
+                {% endif %}
             </nav>
 
             {% if perms.juridico.view_processo or perms.juridico.view_prazo or perms.juridico.view_tarefa or perms.juridico.view_publicacao or perms.juridico.view_audiencia or perms.juridico.view_atendimento %}
@@ -134,7 +150,7 @@
                 </nav>
             {% endif %}
 
-            {% if perms.crm.view_conta or perms.crm.view_proposta or perms.crm.view_conversawhatsapp %}
+            {% if perms.crm.view_proposta or perms.crm.view_conversawhatsapp %}
                 <button class="nav-label nav-group-toggle" type="button" data-menu-group="crm" aria-expanded="true" aria-controls="nav-crm">
                     <span>CRM e vendas</span><span class="nav-group-indicator" aria-hidden="true"><svg class="icon"><use href="#icon-chevron-down"></use></svg></span>
                 </button>
@@ -143,11 +159,6 @@
                         <a class="nav-link {% if active_module == 'whatsapp' %}is-active{% endif %}" href="{% url 'whatsapp-inbox' %}">
                             <svg class="nav-icon" aria-hidden="true"><use href="#icon-phone-chat"></use></svg> Atendimento WhatsApp
                             <span class="nav-count num" data-whatsapp-unread{% if not whatsapp_nao_lidas %} hidden{% endif %} aria-label="mensagens não lidas">{{ whatsapp_nao_lidas|default:0 }}</span>
-                        </a>
-                    {% endif %}
-                    {% if perms.crm.view_conta %}
-                        <a class="nav-link {% if active_module == 'contas' %}is-active{% endif %}" href="{% url 'record-list' module='contas' %}">
-                            <svg class="nav-icon" aria-hidden="true"><use href="#icon-clients"></use></svg> Contas e clientes
                         </a>
                     {% endif %}
                     {% if perms.crm.view_proposta %}
@@ -258,6 +269,9 @@
                     </a>
                 </nav>
             {% endif %}
+            <button class="nav-link sidebar-collapse" type="button" data-sidebar-rail aria-expanded="true" aria-controls="app-sidebar">
+                <svg class="nav-icon" aria-hidden="true"><use href="#icon-collapse"></use></svg> <span data-sidebar-rail-label>Recolher menu</span>
+            </button>
             <div class="sidebar-footer">
                 <span class="user-avatar" aria-hidden="true">{{ user.username|slice:":1" }}</span>
                 <span class="user-meta">
@@ -474,6 +488,81 @@
                 "aria-label",
                 hidden ? "Exibir menu lateral" : "Ocultar menu lateral"
             );
+        });
+        // Recolher/expandir o menu (só ícones) — lembrado neste navegador.
+        const railKey = "erp-vity-adv-sidebar-rail";
+        const railButton = document.querySelector("[data-sidebar-rail]");
+        const railLabel = document.querySelector("[data-sidebar-rail-label]");
+        const navLinks = [...sidebar.querySelectorAll(".sidebar-nav .nav-link")];
+        const applyRail = (rail) => {
+            document.documentElement.classList.toggle("menu-rail", rail);
+            railButton.setAttribute("aria-expanded", String(!rail));
+            railLabel.textContent = rail ? "Expandir menu" : "Recolher menu";
+            railButton.title = rail ? "Expandir menu" : "";
+            navLinks.forEach((link) => {
+                if (rail) link.title = link.textContent.trim().replace(/\s+\d+$/, "");
+                else link.removeAttribute("title");
+            });
+        };
+        applyRail(document.documentElement.classList.contains("menu-rail"));
+        railButton.addEventListener("click", () => {
+            const rail = !document.documentElement.classList.contains("menu-rail");
+            applyRail(rail);
+            sidebar.scrollTop = 0;
+            try { window.localStorage.setItem(railKey, String(rail)); } catch (error) {}
+        });
+
+        // Busca no menu: filtra os itens (sem diferenciar acentos); Enter abre o primeiro.
+        const search = document.querySelector("[data-menu-search]");
+        const emptyNote = document.querySelector("[data-menu-empty]");
+        const groups = [...sidebar.querySelectorAll("[data-menu-group]")].map((button) => ({
+            button,
+            nav: document.getElementById(button.getAttribute("aria-controls")),
+        }));
+        const normalize = (text) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+        let savedGroups = null;
+        const filterMenu = () => {
+            const query = normalize(search.value);
+            if (!query) {
+                navLinks.forEach((link) => { link.hidden = false; });
+                groups.forEach(({ button, nav }) => {
+                    button.hidden = false;
+                    if (savedGroups) nav.hidden = savedGroups.get(nav);
+                });
+                savedGroups = null;
+                emptyNote.hidden = true;
+                return;
+            }
+            if (!savedGroups) savedGroups = new Map(groups.map(({ nav }) => [nav, nav.hidden]));
+            let total = 0;
+            groups.forEach(({ button, nav }) => {
+                const groupMatch = normalize(button.textContent).includes(query);
+                let visible = 0;
+                nav.querySelectorAll(".nav-link").forEach((link) => {
+                    const show = groupMatch || normalize(link.textContent).includes(query);
+                    link.hidden = !show;
+                    if (show) visible += 1;
+                });
+                button.hidden = visible === 0;
+                nav.hidden = visible === 0;
+                total += visible;
+            });
+            emptyNote.hidden = total > 0;
+        };
+        search.addEventListener("input", filterMenu);
+        search.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                const first = navLinks.find((link) => !link.hidden && !link.closest("[hidden]"));
+                if (first) { event.preventDefault(); window.location.href = first.href; }
+            } else if (event.key === "Escape") {
+                search.value = "";
+                filterMenu();
+            }
+        });
+        document.querySelector("[data-menu-search-open]").addEventListener("click", () => {
+            applyRail(false);
+            try { window.localStorage.setItem(railKey, "false"); } catch (error) {}
+            search.focus();
         });
         overlay.addEventListener("click", closeMobileMenu);
         mobileViewport.addEventListener("change", syncMenuForViewport);

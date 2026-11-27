@@ -8,7 +8,7 @@
             <p>{{ page_obj.paginator.count }} registro{{ page_obj.paginator.count|pluralize }}{% if search %} para “{{ search }}”{% endif %}</p>
         </div>
         {% if can_add %}
-            <a class="button" href="{% url 'record-create' module=active_module %}"><svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg> {{ new_label }} {{ module.singular }}</a>
+            <a class="button" href="{% url 'record-create' module=active_module %}{% if active_module == 'contas' %}?depois=documentos{% endif %}"><svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg> {{ new_label }} {{ module.singular }}</a>
         {% endif %}
     </header>
 

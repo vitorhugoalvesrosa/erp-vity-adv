@@ -104,10 +104,13 @@ class DocumentosClienteTests(TestCase):
         completo = self.client.get(reverse("cliente-documentos", args=[self.pf.pk]))
         self.assertContains(completo, "Cadastro completo para este documento")
 
-    def test_novo_cliente_pela_tela_principal_abre_os_documentos(self):
+    def test_clientes_no_menu_e_novo_cliente_abre_os_documentos(self):
         self.client.force_login(self.manager)
         home = self.client.get(reverse("home"))
-        self.assertContains(home, "Novo cliente")
+        self.assertContains(home, f'href="{reverse("record-list", args=["contas"])}"')
+        self.assertNotContains(home, "home-clientes")
+        lista = self.client.get(reverse("record-list", args=["contas"]))
+        self.assertContains(lista, "?depois=documentos")
         response = self.client.post(
             f"{reverse('record-create', args=['contas'])}?depois=documentos",
             {"tipo_pessoa": "pf", "nome": "Carlos", "documento": "111.222.333-44", "status": "cliente", "uf": "rj"},
