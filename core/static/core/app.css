@@ -4669,3 +4669,88 @@ body[data-heading-font="cinzel"] .brand-copy small {
 .form-checkbox-list input {
     accent-color: var(--brand);
 }
+
+/* ---------- Documentos do cliente ---------- */
+
+.doc-notice {
+    margin: 0 0 16px;
+}
+
+.doc-data {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 16px 8px;
+    color: var(--text-2);
+    font-size: 14px;
+}
+
+.doc-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.doc-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-top: 1px solid var(--border);
+}
+
+.doc-info {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+.doc-info small {
+    font-size: 13px;
+}
+
+.text-warning-strong {
+    color: var(--warning);
+}
+
+.doc-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.form-section-title {
+    grid-column: 1 / -1;
+    margin: 8px 0 -4px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+/* ---------- Clientes na tela principal ---------- */
+
+.home-clientes {
+    margin-bottom: 24px;
+}
+
+.home-clientes-busca {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 16px 16px;
+}
+
+.home-clientes-busca .form-control {
+    flex: 1 1 260px;
+}
+
+.home-clientes .mini-list li {
+    align-items: center;
+}
+
+.home-clientes .mini-list .text-link {
+    white-space: nowrap;
+}

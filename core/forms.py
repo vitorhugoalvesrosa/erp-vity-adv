@@ -14,7 +14,9 @@ from financeiro.models import (
     PedidoVenda,
 )
 from juridico.models import (
+    UFS,
     Advogado,
+    ModeloDocumento,
     Atendimento,
     Audiencia,
     Despesa,
@@ -80,10 +82,66 @@ class ERPModelForm(forms.ModelForm):
                 field.widget.attrs["class"] = "form-control"
 
 
+CAMPOS_PF = ("nacionalidade", "estado_civil", "profissao", "rg")
+CAMPOS_PJ = (
+    "representante_nome",
+    "representante_cpf",
+    "representante_rg",
+    "representante_nacionalidade",
+    "representante_estado_civil",
+)
+
+
 class ContaForm(ERPModelForm):
     class Meta:
         model = Conta
-        fields = ("nome", "documento", "email", "telefone", "status")
+        fields = (
+            "tipo_pessoa",
+            "nome",
+            "documento",
+            "email",
+            "telefone",
+            "status",
+            *CAMPOS_PF,
+            *CAMPOS_PJ,
+            "cep",
+            "endereco",
+            "bairro",
+            "cidade",
+            "uf",
+        )
+        labels = {"nome": "Nome / razão social", "documento": "CPF / CNPJ", "tipo_pessoa": "Tipo de pessoa"}
+        widgets = {"uf": forms.Select(choices=[("", "—"), *UFS])}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["tipo_pessoa"].required = False
+        self.fields["documento"].help_text = "Só os números ou com pontuação."
+        for nome in ("estado_civil", "representante_estado_civil"):
+            self.fields[nome].widget.attrs["list"] = "opcoes-estado-civil"
+        for nome in ("nacionalidade", "representante_nacionalidade"):
+            self.fields[nome].widget.attrs["list"] = "opcoes-nacionalidade"
+        self.fields["cep"].widget.attrs.update({"inputmode": "numeric", "autocomplete": "postal-code"})
+        for nome in CAMPOS_PF:
+            self.fields[nome].widget.attrs["data-pessoa"] = "pf"
+        for nome in CAMPOS_PJ:
+            self.fields[nome].widget.attrs["data-pessoa"] = "pj"
+
+    def clean(self):
+        cleaned = super().clean()
+        tipo = cleaned.get("tipo_pessoa") or Conta.TipoPessoa.NAO_INFORMADO
+        cleaned["tipo_pessoa"] = tipo
+        digitos = "".join(ch for ch in cleaned.get("documento") or "" if ch.isdigit())
+        if tipo == Conta.TipoPessoa.PF and digitos and len(digitos) != 11:
+            self.add_error("documento", "CPF precisa ter 11 dígitos.")
+        if tipo == Conta.TipoPessoa.PJ and digitos and len(digitos) != 14:
+            self.add_error("documento", "CNPJ precisa ter 14 dígitos.")
+        cpf_rep = "".join(ch for ch in cleaned.get("representante_cpf") or "" if ch.isdigit())
+        if cpf_rep and len(cpf_rep) != 11:
+            self.add_error("representante_cpf", "CPF precisa ter 11 dígitos.")
+        if cleaned.get("uf"):
+            cleaned["uf"] = cleaned["uf"].upper()
+        return cleaned
 
 
 class PropostaForm(ERPModelForm):
@@ -495,3 +553,13 @@ class LancamentoForm(ERPModelForm):
             )
         self.fields["categoria"].queryset = ativas
         self.fields["forma_pagamento"].choices = [("", "—")] + list(ContaPagar.FormaPagamento.choices)
+
+
+class ModeloDocumentoForm(ERPModelForm):
+    class Meta:
+        model = ModeloDocumento
+        fields = (
+            "nome", "titulo", "aplica_a", "corpo", "local", "assinatura",
+            "incluir_telefone", "usar_logo", "rodape", "ordem", "ativo",
+        )
+        widgets = {"corpo": forms.Textarea(attrs={"rows": 16})}

@@ -73,6 +73,9 @@
                                         {% if active_module == "processos" %}
                                             <a class="text-link" href="{% url 'processo-ai' pk=row.object.pk %}"><svg class="icon" aria-hidden="true"><use href="#icon-spark"></use></svg> Ficha</a>
                                         {% endif %}
+                                        {% if active_module == "contas" %}
+                                            <a class="text-link" href="{% url 'cliente-documentos' pk=row.object.pk %}">Documentos</a>
+                                        {% endif %}
                                         {% if active_module == "advogados" %}
                                             <a class="text-link" href="{% url 'advogado-detalhe' pk=row.object.pk %}">Processos</a>
                                         {% endif %}

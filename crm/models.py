@@ -37,6 +37,27 @@ class Conta(models.Model):
         blank=True,
         related_name="leads_responsavel",
     )
+    # Qualificação usada para preencher procurações e declarações.
+    nacionalidade = models.CharField("Nacionalidade", max_length=60, blank=True, default="")
+    estado_civil = models.CharField("Estado civil", max_length=40, blank=True, default="")
+    profissao = models.CharField("Profissão", max_length=120, blank=True, default="")
+    rg = models.CharField("Identidade (RG)", max_length=30, blank=True, default="")
+    cep = models.CharField("CEP", max_length=9, blank=True, default="")
+    endereco = models.CharField(
+        "Endereço", max_length=255, blank=True, default="", help_text="Rua, número e complemento."
+    )
+    bairro = models.CharField("Bairro", max_length=120, blank=True, default="")
+    cidade = models.CharField("Cidade", max_length=120, blank=True, default="")
+    uf = models.CharField("UF", max_length=2, blank=True, default="")
+    representante_nome = models.CharField("Representante legal", max_length=255, blank=True, default="")
+    representante_cpf = models.CharField("CPF do representante", max_length=14, blank=True, default="")
+    representante_rg = models.CharField("RG do representante", max_length=30, blank=True, default="")
+    representante_nacionalidade = models.CharField(
+        "Nacionalidade do representante", max_length=60, blank=True, default=""
+    )
+    representante_estado_civil = models.CharField(
+        "Estado civil do representante", max_length=40, blank=True, default=""
+    )
     qualificacao = models.JSONField(default=dict, blank=True)
     score_lead = models.PositiveSmallIntegerField(default=0)
     data_ultima_interacao = models.DateTimeField(null=True, blank=True)

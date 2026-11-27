@@ -1,0 +1,73 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Clientes · Documentos</p>
+            <h1>{{ conta.nome }}</h1>
+            <p>
+                {{ conta.get_tipo_pessoa_display }}{% if documento_formatado %} · <span class="num">{{ documento_formatado }}</span>{% endif %}
+                {% if conta.telefone %} · {{ conta.telefone }}{% endif %}
+            </p>
+        </div>
+        <div class="page-heading-actions">
+            {% if can_edit %}<a class="button button-secondary" href="{% url 'record-edit' module='contas' pk=conta.pk %}">Editar cadastro</a>{% endif %}
+            <a class="button button-secondary" href="{% url 'record-list' module='contas' %}">Voltar</a>
+        </div>
+    </header>
+
+    {% if not tipo_definido %}
+        <div class="notice notice-warning doc-notice" role="note">
+            <strong>Defina se o cliente é pessoa física ou jurídica</strong> no cadastro. Enquanto isso, aparecem todos os modelos.
+        </div>
+    {% endif %}
+
+    <section class="panel">
+        <div class="panel-header">
+            <div>
+                <h2>Gerar documento</h2>
+                <p>Os dados do cadastro entram na qualificação. O que estiver em branco sai como linha para preencher à mão.</p>
+            </div>
+            {% if can_edit_modelos %}<a class="text-link" href="{% url 'record-list' module='modelos-documentos' %}">Editar modelos</a>{% endif %}
+        </div>
+        <label class="doc-data form-checkbox-row" for="doc-data-branco">
+            <input class="form-checkbox" type="checkbox" id="doc-data-branco" data-doc-data>
+            Deixar a data em branco (para preencher na assinatura)
+        </label>
+        <ul class="doc-list">
+            {% for modelo in modelos %}
+                <li class="doc-item">
+                    <div class="doc-info">
+                        <strong>{{ modelo.nome }}</strong>
+                        {% if modelo.faltando %}
+                            <small class="text-warning-strong">Faltam no cadastro: {{ modelo.faltando|join:", " }}</small>
+                        {% else %}
+                            <small class="cf-entrada">Cadastro completo para este documento</small>
+                        {% endif %}
+                    </div>
+                    <div class="doc-actions">
+                        <a class="button" href="{% url 'cliente-documento-gerar' pk=conta.pk modelo_pk=modelo.pk formato='pdf' %}" target="_blank" rel="noopener" data-doc-link><svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg> PDF</a>
+                        <a class="button button-secondary" href="{% url 'cliente-documento-gerar' pk=conta.pk modelo_pk=modelo.pk formato='docx' %}" data-doc-link>Word</a>
+                    </div>
+                </li>
+            {% empty %}
+                <li class="muted doc-item">Nenhum modelo ativo para {{ conta.get_tipo_pessoa_display|lower }}.</li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    <script>
+        (() => {
+            const toggle = document.querySelector("[data-doc-data]");
+            if (!toggle) return;
+            toggle.addEventListener("change", () => {
+                document.querySelectorAll("[data-doc-link]").forEach((link) => {
+                    const url = new URL(link.href, window.location.href);
+                    if (toggle.checked) url.searchParams.set("data", "branco");
+                    else url.searchParams.delete("data");
+                    link.href = url.pathname + url.search;
+                });
+            });
+        })();
+    </script>
+{% endblock %}

@@ -583,3 +583,34 @@ class ProcessoEncontrado(models.Model):
 
     def __str__(self):
         return self.numero_cnj
+
+
+class ModeloDocumento(models.Model):
+    """Procurações, declarações e afins, preenchidos com a qualificação do cliente."""
+
+    class AplicaA(models.TextChoices):
+        PF = "pf", "Pessoa física"
+        PJ = "pj", "Pessoa jurídica"
+
+    nome = models.CharField("Nome do modelo", max_length=120, help_text="Como aparece na lista. Ex.: Procuração PF.")
+    titulo = models.CharField("Título impresso", max_length=120, help_text="Ex.: PROCURAÇÃO")
+    aplica_a = models.CharField("Para", max_length=2, choices=AplicaA.choices)
+    corpo = models.TextField(
+        "Texto",
+        help_text="Parágrafos separados por uma linha em branco. **negrito**, *itálico* e ***negrito e itálico***.",
+    )
+    local = models.CharField("Cidade da assinatura", max_length=80, default="Rio de Janeiro")
+    assinatura = models.CharField("Legenda da assinatura", max_length=120, default="ASSINATURA DO(A) OUTORGANTE")
+    incluir_telefone = models.BooleanField("Mostrar telefone do cliente", default=False)
+    usar_logo = models.BooleanField("Usar o logo do escritório", default=False)
+    rodape = models.CharField("Rodapé", max_length=255, blank=True)
+    ativo = models.BooleanField("Ativo", default=True)
+    ordem = models.PositiveSmallIntegerField("Ordem", default=0)
+
+    class Meta:
+        ordering = ["ordem", "nome"]
+        verbose_name = "Modelo de documento"
+        verbose_name_plural = "Modelos de documentos"
+
+    def __str__(self):
+        return self.nome

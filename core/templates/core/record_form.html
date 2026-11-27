@@ -15,7 +15,7 @@
             {% if form.non_field_errors %}<div class="form-error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
             <div class="form-grid">
                 {% for field in form %}
-                    <div class="form-field {% if field.name == 'descricao' or field.name == 'recipients' or field.name == 'message' or field.name == 'advogados' %}is-wide{% endif %}" id="field-row-{{ field.name }}">
+                    <div class="form-field {% if field.name == 'descricao' or field.name == 'recipients' or field.name == 'message' or field.name == 'advogados' or field.name == 'corpo' or field.name == 'endereco' %}is-wide{% endif %}" id="field-row-{{ field.name }}">
                         {% if field.field.widget.input_type == "checkbox" and not field.field.widget.allow_multiple_selected %}
                             <label class="form-checkbox-row" for="{{ field.id_for_label }}">{{ field }} {{ field.label }}</label>
                         {% else %}
@@ -33,6 +33,52 @@
             </div>
         </form>
     </section>
+    {% if active_module == "contas" %}
+        <datalist id="opcoes-estado-civil">
+            <option value="solteiro(a)"></option><option value="casado(a)"></option><option value="divorciado(a)"></option>
+            <option value="viúvo(a)"></option><option value="separado(a)"></option><option value="união estável"></option>
+        </datalist>
+        <datalist id="opcoes-nacionalidade"><option value="brasileiro(a)"></option></datalist>
+        <script>
+            (() => {
+                const tipo = document.getElementById("id_tipo_pessoa");
+                const linhas = (pessoa) =>
+                    [...document.querySelectorAll(`[data-pessoa="${pessoa}"]`)].map((campo) => campo.closest(".form-field"));
+                const atualizar = () => {
+                    const valor = tipo ? tipo.value : "";
+                    linhas("pf").forEach((linha) => { linha.hidden = valor === "pj"; });
+                    linhas("pj").forEach((linha) => { linha.hidden = valor !== "pj"; });
+                };
+                if (tipo) {
+                    tipo.addEventListener("change", atualizar);
+                    atualizar();
+                }
+                // CEP → endereço (ViaCEP). Só preenche campos vazios; nada é apagado.
+                const cep = document.getElementById("id_cep");
+                if (!cep) return;
+                cep.addEventListener("blur", async () => {
+                    const digitos = cep.value.replace(/\D/g, "");
+                    if (digitos.length !== 8) return;
+                    cep.value = `${digitos.slice(0, 5)}-${digitos.slice(5)}`;
+                    try {
+                        const resposta = await fetch(`https://viacep.com.br/ws/${digitos}/json/`);
+                        const dados = await resposta.json();
+                        if (dados.erro) return;
+                        const preencher = (id, valor) => {
+                            const campo = document.getElementById(id);
+                            if (campo && !campo.value && valor) campo.value = valor;
+                        };
+                        preencher("id_endereco", dados.logradouro ? `${dados.logradouro}, ` : "");
+                        preencher("id_bairro", dados.bairro);
+                        preencher("id_cidade", dados.localidade);
+                        preencher("id_uf", dados.uf);
+                        const endereco = document.getElementById("id_endereco");
+                        if (endereco && endereco.value.endsWith(", ")) endereco.focus();
+                    } catch (erro) {}
+                });
+            })();
+        </script>
+    {% endif %}
     {% if active_module == "produtos" %}
         <script>
             const serviceField = document.getElementById("id_eh_servico");

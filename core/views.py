@@ -33,6 +33,7 @@ from juridico.models import (
     Audiencia,
     Despesa,
     Honorario,
+    ModeloDocumento,
     Movimentacao,
     Prazo,
     Processo,
@@ -58,6 +59,7 @@ from .forms import (
     EmailNoticeForm,
     HonorarioForm,
     LancamentoForm,
+    ModeloDocumentoForm,
     MovimentacaoForm,
     PedidoVendaForm,
     PrazoForm,
@@ -126,6 +128,20 @@ MODULES = {
             ("ativo", "Situação", "boolean"),
         ],
         "search": ("nome", "oab_numero", "email"),
+        "select_related": (),
+    },
+    "modelos-documentos": {
+        "title": "Modelos de documentos",
+        "singular": "modelo",
+        "app": "juridico",
+        "model": ModeloDocumento,
+        "form": ModeloDocumentoForm,
+        "columns": [
+            ("nome", "Modelo", "text"),
+            ("aplica_a", "Para", "choice"),
+            ("ativo", "Situação", "boolean"),
+        ],
+        "search": ("nome", "titulo", "corpo"),
         "select_related": (),
     },
     "processos": {
@@ -310,11 +326,12 @@ MODULES = {
         "form": ContaForm,
         "columns": [
             ("nome", "Nome", "text"),
+            ("tipo_pessoa", "Tipo", "choice"),
             ("documento", "Documento", "text"),
-            ("email", "E-mail", "text"),
+            ("telefone", "Telefone", "text"),
             ("status", "Etapa", "choice"),
         ],
-        "search": ("nome", "documento", "email"),
+        "search": ("nome", "documento", "email", "telefone", "representante_nome"),
         "select_related": (),
     },
     "propostas": {
@@ -594,6 +611,8 @@ def home(request):
             "prazos_vencidos_total", 0
         )
 
+    clientes_recentes = list(Conta.objects.order_by("-data_criacao")[:5]) if can_view(Conta) else []
+
     recent_proposals = []
     if can_view(Proposta):
         recent_proposals = list(Proposta.objects.select_related("conta")[:5])
@@ -609,6 +628,7 @@ def home(request):
             "overdue_count": (
                 overdue_receivables.count() if can_view(ContaReceber) else None
             ),
+            "clientes_recentes": clientes_recentes,
             "recent_proposals": recent_proposals,
             "agenda": agenda,
             "amanha": amanha,
@@ -859,6 +879,8 @@ def record_edit(request, module, pk=None):
             f"{_gendered(config, 'atualizado', 'atualizada') if instance else _gendered(config, 'criado', 'criada')}"
             " com sucesso.",
         )
+        if module == "contas" and request.GET.get("depois") == "documentos":
+            return redirect("cliente-documentos", pk=saved.pk)
         return redirect("record-list", module=module)
 
     return render(

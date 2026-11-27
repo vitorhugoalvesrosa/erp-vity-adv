@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import advogados_views, ai_views, controle_financeiro_views, financeiro_views, juridico_views, settings_views, views
+from . import advogados_views, ai_views, controle_financeiro_views, documentos_views, financeiro_views, juridico_views, settings_views, views
 
 urlpatterns = [
     path("", views.home, name="home"),
@@ -60,6 +60,12 @@ urlpatterns = [
     path("app/advogados/<int:pk>/processos/", advogados_views.advogado_detalhe, name="advogado-detalhe"),
     path("app/advogados/<int:pk>/buscar-djen/", advogados_views.advogado_buscar_djen, name="advogado-buscar-djen"),
     path("app/djen/encontrados/<int:pk>/", advogados_views.encontrado_situacao, name="encontrado-situacao"),
+    path("app/contas/<int:pk>/documentos/", documentos_views.cliente_documentos, name="cliente-documentos"),
+    path(
+        "app/contas/<int:pk>/documentos/<int:modelo_pk>.<str:formato>",
+        documentos_views.cliente_documento_gerar,
+        name="cliente-documento-gerar",
+    ),
     path("app/<slug:module>/", views.record_list, name="record-list"),
     path("app/<slug:module>/novo/", views.record_edit, name="record-create"),
     path(
