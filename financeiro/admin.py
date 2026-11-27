@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from core.admin_site import erp_admin_site
-from .models import ContaPagar, ContaReceber, Contrato, Pagamento, PedidoVenda
+from .models import CategoriaFinanceira, ContaPagar, ContaReceber, Contrato, Lancamento, Pagamento, PedidoVenda
 
 
 @admin.register(PedidoVenda, site=erp_admin_site)
@@ -51,3 +51,18 @@ class ContaPagarAdmin(admin.ModelAdmin):
     list_filter = ("status", "categoria", "forma_pagamento")
     search_fields = ("descricao", "favorecido", "observacoes")
     date_hierarchy = "data_vencimento"
+
+
+@admin.register(CategoriaFinanceira, site=erp_admin_site)
+class CategoriaFinanceiraAdmin(admin.ModelAdmin):
+    list_display = ("nome", "tipo", "ativa")
+    list_filter = ("tipo", "ativa")
+    search_fields = ("nome",)
+
+
+@admin.register(Lancamento, site=erp_admin_site)
+class LancamentoAdmin(admin.ModelAdmin):
+    list_display = ("data", "tipo", "categoria", "descricao", "valor", "forma_pagamento")
+    list_filter = ("tipo", "categoria", "data")
+    search_fields = ("descricao", "observacoes")
+    date_hierarchy = "data"

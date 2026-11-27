@@ -5,7 +5,14 @@ from django.db import models
 from django.utils import timezone
 
 from crm.models import Conta, Proposta
-from financeiro.models import Contrato, ContaPagar, ContaReceber, PedidoVenda
+from financeiro.models import (
+    CategoriaFinanceira,
+    Contrato,
+    ContaPagar,
+    ContaReceber,
+    Lancamento,
+    PedidoVenda,
+)
 from juridico.models import (
     Atendimento,
     Audiencia,
@@ -55,7 +62,11 @@ class ERPModelForm(forms.ModelForm):
                 field.input_formats = ["%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M", "%d/%m/%Y %H:%M"]
             elif isinstance(field, forms.DateField):
                 field.widget.input_type = "date"
+                # O campo de data do navegador só aceita AAAA-MM-DD; em dd/mm/aaaa ele aparece vazio.
+                field.widget.format = "%Y-%m-%d"
                 field.widget.attrs["class"] = "form-control"
+                if "%Y-%m-%d" not in field.input_formats:
+                    field.input_formats = ["%Y-%m-%d", *field.input_formats]
             elif isinstance(field, forms.DecimalField):
                 field.widget.attrs.update({"class": "form-control", "step": "0.01"})
             elif isinstance(field, forms.IntegerField):
@@ -414,3 +425,37 @@ class EmailNoticeForm(forms.Form):
         if "\r" in subject or "\n" in subject:
             raise forms.ValidationError("O assunto deve estar em uma única linha.")
         return subject
+
+
+class CategoriaFinanceiraForm(ERPModelForm):
+    class Meta:
+        model = CategoriaFinanceira
+        fields = ("tipo", "nome", "ativa")
+
+
+class _CategoriaSelect(forms.Select):
+    """Marca cada opção com o tipo (entrada/saída) para o formulário filtrar a lista."""
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        instance = getattr(value, "instance", None)
+        if instance is not None:
+            option["attrs"]["data-tipo"] = instance.tipo
+        return option
+
+
+class LancamentoForm(ERPModelForm):
+    class Meta:
+        model = Lancamento
+        fields = ("data", "tipo", "categoria", "descricao", "valor", "forma_pagamento", "observacoes")
+        widgets = {"categoria": _CategoriaSelect(attrs={"data-filter-by": "id_tipo"})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        ativas = CategoriaFinanceira.objects.filter(ativa=True)
+        if self.instance.pk and self.instance.categoria_id:
+            ativas = CategoriaFinanceira.objects.filter(
+                models.Q(ativa=True) | models.Q(pk=self.instance.categoria_id)
+            )
+        self.fields["categoria"].queryset = ativas
+        self.fields["forma_pagamento"].choices = [("", "—")] + list(ContaPagar.FormaPagamento.choices)

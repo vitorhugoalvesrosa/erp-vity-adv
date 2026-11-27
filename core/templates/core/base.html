@@ -182,11 +182,21 @@
                 </nav>
             {% endif %}
 
-            {% if perms.financeiro.view_contareceber or perms.financeiro.view_contapagar or perms.juridico.view_honorario or perms.juridico.view_timesheet %}
+            {% if perms.financeiro.view_lancamento or perms.financeiro.view_contareceber or perms.financeiro.view_contapagar or perms.juridico.view_honorario or perms.juridico.view_timesheet %}
                 <button class="nav-label nav-group-toggle" type="button" data-menu-group="finance" aria-expanded="true" aria-controls="nav-finance">
                     <span>Financeiro</span><span class="nav-group-indicator" aria-hidden="true"><svg class="icon"><use href="#icon-chevron-down"></use></svg></span>
                 </button>
                 <nav class="sidebar-nav" id="nav-finance" aria-label="Financeiro">
+                    {% if perms.financeiro.view_lancamento %}
+                        <a class="nav-link {% if active_module == 'lancamentos' %}is-active{% endif %}" href="{% url 'lancamentos' %}">
+                            <svg class="nav-icon" aria-hidden="true"><use href="#icon-budget"></use></svg> Controle financeiro
+                        </a>
+                    {% endif %}
+                    {% if perms.financeiro.view_categoriafinanceira %}
+                        <a class="nav-link {% if active_module == 'categorias-financeiras' %}is-active{% endif %}" href="{% url 'record-list' module='categorias-financeiras' %}">
+                            <svg class="nav-icon" aria-hidden="true"><use href="#icon-palette"></use></svg> Categorias
+                        </a>
+                    {% endif %}
                     {% if perms.financeiro.view_contareceber %}
                         <a class="nav-link {% if active_module == 'recebiveis' %}is-active{% endif %}" href="{% url 'record-list' module='recebiveis' %}">
                             <svg class="nav-icon" aria-hidden="true"><use href="#icon-receivable"></use></svg> Contas a receber
@@ -308,6 +318,29 @@
             try {
                 window.localStorage.setItem("erp-vity-adv-theme", next);
             } catch (error) {}
+        });
+        // Lista dependente: ex. categorias que mudam conforme o tipo (entrada/saída).
+        document.querySelectorAll("select[data-filter-by]").forEach((select) => {
+            const source = document.getElementById(select.dataset.filterBy);
+            if (!source) return;
+            const apply = () => {
+                const value = source.value;
+                select.querySelectorAll("option[data-tipo]").forEach((option) => {
+                    const hide = Boolean(value) && option.dataset.tipo !== value;
+                    option.hidden = hide;
+                    option.disabled = hide;
+                });
+                if (select.selectedOptions[0] && select.selectedOptions[0].disabled) select.value = "";
+            };
+            source.addEventListener("change", apply);
+            select.addEventListener("change", () => {
+                const tipo = select.selectedOptions[0] && select.selectedOptions[0].dataset.tipo;
+                if (tipo && !source.value) {
+                    source.value = tipo;
+                    apply();
+                }
+            });
+            apply();
         });
         document.querySelectorAll("form[data-ai-form]").forEach((form) => {
             form.addEventListener("submit", () => {

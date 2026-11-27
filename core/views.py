@@ -10,6 +10,7 @@ from django.core.exceptions import ImproperlyConfigured, PermissionDenied
 from django.core.mail import EmailMessage
 from django.core.paginator import Paginator
 from django.db import transaction
+from django.db.models.deletion import ProtectedError
 from django.db.models import Q, Sum
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -24,7 +25,7 @@ from reportlab.lib.units import mm
 from reportlab.platypus import Image, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from crm.models import Conta, Proposta
-from financeiro.models import Contrato, ContaPagar, ContaReceber, PedidoVenda
+from financeiro.models import CategoriaFinanceira, Contrato, ContaPagar, ContaReceber, Lancamento, PedidoVenda
 from juridico.models import (
     Atendimento,
     Audiencia,
@@ -44,6 +45,7 @@ from .forms import (
     AtendimentoForm,
     AudienciaForm,
     ContaForm,
+    CategoriaFinanceiraForm,
     ContaPagarForm,
     ContaReceberForm,
     ContratoForm,
@@ -51,6 +53,7 @@ from .forms import (
     ERPPasswordResetForm,
     EmailNoticeForm,
     HonorarioForm,
+    LancamentoForm,
     MovimentacaoForm,
     PedidoVendaForm,
     PrazoForm,
@@ -89,6 +92,7 @@ BOOLEAN_LABELS = {
     "urgente": ("Urgente", "Normal", "danger", "neutral"),
     "processada": ("Tratada", "Pendente", "success", "warning"),
     "faturado": ("Faturado", "A faturar", "success", "warning"),
+    "ativa": ("Ativa", "Inativa", "success", "neutral"),
 }
 
 
@@ -390,6 +394,38 @@ MODULES = {
         ],
         "search": ("descricao", "favorecido"),
         "select_related": ("cliente", "processo"),
+    },
+    "lancamentos": {
+        "title": "Controle financeiro",
+        "singular": "lançamento",
+        "app": "financeiro",
+        "model": Lancamento,
+        "form": LancamentoForm,
+        "columns": [
+            ("data", "Data", "date"),
+            ("tipo", "Tipo", "choice"),
+            ("categoria", "Categoria", "text"),
+            ("descricao", "Descrição", "text"),
+            ("valor", "Valor", "currency"),
+        ],
+        "search": ("descricao", "categoria__nome", "observacoes"),
+        "select_related": ("categoria",),
+    },
+    "categorias-financeiras": {
+        "title": "Categorias financeiras",
+        "singular": "categoria",
+        "feminine": True,
+        "app": "financeiro",
+        "model": CategoriaFinanceira,
+        "form": CategoriaFinanceiraForm,
+        "columns": [
+            ("nome", "Categoria", "text"),
+            ("tipo", "Tipo", "choice"),
+            ("sigla", "CR / CP", "text"),
+            ("ativa", "Situação", "boolean"),
+        ],
+        "search": ("nome",),
+        "select_related": (),
     },
 }
 
@@ -1123,7 +1159,16 @@ def record_delete(request, module, pk):
     _require_permission(request, f"{config['app']}.delete_{model_name}")
     instance = get_object_or_404(config["model"], pk=pk)
     if request.method == "POST":
-        instance.delete()
+        try:
+            instance.delete()
+        except ProtectedError:
+            messages.error(
+                request,
+                f"Não é possível excluir: há registros usando {_gendered(config, 'este', 'esta')} "
+                f"{config['singular']}."
+                + (" Desative a categoria para tirá-la da lista." if module == "categorias-financeiras" else ""),
+            )
+            return redirect("record-list", module=module)
         messages.success(request, f"{config['singular'].capitalize()} {_gendered(config, 'removido', 'removida')}.")
         return redirect("record-list", module=module)
 

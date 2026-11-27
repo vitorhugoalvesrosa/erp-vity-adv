@@ -234,3 +234,77 @@ class ContaPagar(models.Model):
     @property
     def valor_efetivo(self):
         return self.valor_pago if self.valor_pago is not None else self.valor
+
+
+class TipoLancamento(models.TextChoices):
+    ENTRADA = "entrada", "Entrada"
+    SAIDA = "saida", "Saída"
+
+
+class CategoriaFinanceira(models.Model):
+    """Categoria dos lançamentos: Entrada = contas a receber (CR), Saída = contas a pagar (CP)."""
+
+    tipo = models.CharField("Tipo", max_length=10, choices=TipoLancamento.choices)
+    nome = models.CharField("Categoria", max_length=100)
+    ativa = models.BooleanField("Ativa", default=True, help_text="Inativas somem da lista ao lançar.")
+
+    class Meta:
+        ordering = ["tipo", "nome"]
+        verbose_name = "Categoria financeira"
+        verbose_name_plural = "Categorias financeiras"
+        constraints = [
+            models.UniqueConstraint(fields=["tipo", "nome"], name="categoria_financeira_unica_por_tipo"),
+        ]
+
+    def __str__(self):
+        return self.nome
+
+    @property
+    def sigla(self):
+        return "CR" if self.tipo == TipoLancamento.ENTRADA else "CP"
+
+
+class Lancamento(models.Model):
+    """Linha do controle financeiro (livro caixa): uma entrada ou uma saída de dinheiro."""
+
+    data = models.DateField("Data", default=timezone.localdate)
+    tipo = models.CharField("Tipo", max_length=10, choices=TipoLancamento.choices)
+    categoria = models.ForeignKey(
+        CategoriaFinanceira, on_delete=models.PROTECT, related_name="lancamentos", verbose_name="Categoria"
+    )
+    descricao = models.CharField("Descrição / detalhamento", max_length=255)
+    valor = models.DecimalField("Valor (R$)", max_digits=12, decimal_places=2)
+    forma_pagamento = models.CharField(
+        "Forma de pagamento", max_length=20, choices=ContaPagar.FormaPagamento.choices, blank=True
+    )
+    observacoes = models.CharField("Observações", max_length=255, blank=True)
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="lancamentos_criados", editable=False,
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["data", "pk"]
+        verbose_name = "Lançamento"
+        verbose_name_plural = "Lançamentos"
+
+    def __str__(self):
+        return f"{self.data:%d/%m/%Y} · {self.descricao}"
+
+    def clean(self):
+        if self.valor is not None and self.valor <= 0:
+            raise ValidationError({"valor": "Informe um valor maior que zero."})
+        if self.categoria_id and self.tipo and self.categoria.tipo != self.tipo:
+            raise ValidationError(
+                {"categoria": f"A categoria “{self.categoria}” é de {self.categoria.get_tipo_display().lower()}."}
+            )
+
+    @property
+    def entrada(self):
+        return self.valor if self.tipo == TipoLancamento.ENTRADA else None
+
+    @property
+    def saida(self):
+        return self.valor if self.tipo == TipoLancamento.SAIDA else None

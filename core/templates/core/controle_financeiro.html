@@ -1,0 +1,159 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Financeiro</p>
+            <h1>Controle financeiro</h1>
+            <p>Entradas (CR) e saídas (CP) do escritório, no formato da planilha de controle.</p>
+        </div>
+        <div class="page-heading-actions">
+            <a class="button button-secondary" href="{% url 'lancamentos-exportar' %}?{{ querystring }}"><svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg> Exportar Excel</a>
+            {% if can_add %}
+                <a class="button" href="{% url 'record-create' module='lancamentos' %}"><svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg> Novo lançamento</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <section class="kpi-strip" aria-label="Resumo de {{ periodo }}">
+        <div class="kpi">
+            <span>Entradas</span>
+            <strong class="num cf-entrada">R$ {{ totais.entradas|floatformat:"2g" }}</strong>
+            <small>{{ periodo|capfirst }}</small>
+        </div>
+        <div class="kpi">
+            <span>Saídas</span>
+            <strong class="num cf-saida">R$ {{ totais.saidas|floatformat:"2g" }}</strong>
+            <small>{{ periodo|capfirst }}</small>
+        </div>
+        <div class="kpi{% if totais.saldo < 0 %} kpi-danger{% endif %}">
+            <span>Saldo</span>
+            <strong class="num">R$ {{ totais.saldo|floatformat:"2g" }}</strong>
+            <small>{{ totais.quantidade }} lançamento{{ totais.quantidade|pluralize }}</small>
+        </div>
+    </section>
+
+    <form class="ap-filters" method="get" role="search">
+        <div class="ap-filter-row">
+            <label class="visually-hidden" for="cf-mes">Mês</label>
+            <input class="form-control" type="month" id="cf-mes" name="mes" value="{{ mes }}" onchange="this.form.submit()">
+            <label class="visually-hidden" for="cf-tipo">Tipo</label>
+            <select class="form-select" id="cf-tipo" name="tipo" onchange="this.form.submit()">
+                <option value="">Entradas e saídas</option>
+                {% for valor, rotulo in tipos %}<option value="{{ valor }}"{% if tipo == valor %} selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+            </select>
+            <label class="visually-hidden" for="cf-categoria">Categoria</label>
+            <select class="form-select" id="cf-categoria" name="categoria" onchange="this.form.submit()">
+                <option value="">Todas as categorias</option>
+                {% for item in categorias %}<option value="{{ item.pk }}"{% if categoria == item.pk|stringformat:"s" %} selected{% endif %}>{{ item.nome }} ({{ item.sigla }})</option>{% endfor %}
+            </select>
+            <label class="visually-hidden" for="cf-busca">Buscar</label>
+            <input class="form-control" type="search" id="cf-busca" name="q" value="{{ busca }}" placeholder="Descrição ou observação">
+            <button class="button button-secondary" type="submit">Filtrar</button>
+            {% if mes %}<a class="text-link" href="?mes=">Ver todos os meses</a>{% else %}<a class="text-link" href="?">Mês atual</a>{% endif %}
+        </div>
+    </form>
+
+    <section class="panel cf-sheet" aria-labelledby="cf-titulo">
+        <h2 class="cf-band" id="cf-titulo">{{ company_display_name|upper }} — CONTROLE FINANCEIRO<span>{{ periodo|upper }}</span></h2>
+        <div class="table-wrap">
+            <table class="data-table data-table-stack cf-table">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Tipo</th>
+                        <th>Categoria</th>
+                        <th>Descrição / Detalhamento</th>
+                        <th class="cell-number">Entrada (R$)</th>
+                        <th class="cell-number">Saída (R$)</th>
+                        <th>Forma de pagamento</th>
+                        <th>Observações</th>
+                        {% if can_change or can_delete %}<th class="actions-col"><span class="visually-hidden">Ações</span></th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in lancamentos %}
+                        <tr>
+                            <td class="cell-date num" data-label="Data">{{ item.data|date:"d/m/Y" }}</td>
+                            <td data-label="Tipo"><span class="cf-tipo cf-tipo-{{ item.tipo }}">{{ item.get_tipo_display }}</span></td>
+                            <td data-label="Categoria">{{ item.categoria.nome }}</td>
+                            <td data-label="Descrição">{{ item.descricao }}</td>
+                            <td class="cell-number num cf-entrada" data-label="Entrada">{% if item.entrada %}R$ {{ item.entrada|floatformat:"2g" }}{% endif %}</td>
+                            <td class="cell-number num cf-saida" data-label="Saída">{% if item.saida %}R$ {{ item.saida|floatformat:"2g" }}{% endif %}</td>
+                            <td data-label="Forma de pagamento">{{ item.get_forma_pagamento_display|default:"" }}</td>
+                            <td class="cf-obs" data-label="Observações">{{ item.observacoes }}</td>
+                            {% if can_change or can_delete %}
+                                <td class="actions-col">
+                                    {% if can_change %}<a class="text-link" href="{% url 'record-edit' module='lancamentos' pk=item.pk %}">Editar</a>{% endif %}
+                                    {% if can_delete %}<a class="text-link text-danger" href="{% url 'record-delete' module='lancamentos' pk=item.pk %}">Excluir</a>{% endif %}
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="9">
+                                <div class="empty-state">
+                                    <span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#icon-budget"></use></svg></span>
+                                    <strong>Nenhum lançamento em {{ periodo }}</strong>
+                                    <p>Lance entradas e saídas aqui ou importe a planilha que você já usa.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                {% if lancamentos %}
+                    <tfoot>
+                        <tr>
+                            <th colspan="4" scope="row">Totais</th>
+                            <td class="cell-number num cf-entrada">R$ {{ totais.entradas|floatformat:"2g" }}</td>
+                            <td class="cell-number num cf-saida">R$ {{ totais.saidas|floatformat:"2g" }}</td>
+                            <td colspan="{% if can_change or can_delete %}3{% else %}2{% endif %}"></td>
+                        </tr>
+                        <tr>
+                            <th colspan="4" scope="row">Saldo (entradas − saídas)</th>
+                            <td class="cell-number num" colspan="2"><strong>R$ {{ totais.saldo|floatformat:"2g" }}</strong></td>
+                            <td colspan="{% if can_change or can_delete %}3{% else %}2{% endif %}"></td>
+                        </tr>
+                    </tfoot>
+                {% endif %}
+            </table>
+        </div>
+        {% if limitado %}<p class="muted cf-note">Mostrando os primeiros 1.000 lançamentos. Use os filtros ou exporte para ver todos.</p>{% endif %}
+    </section>
+
+    <div class="cf-bottom">
+        {% if por_categoria %}
+            <section class="panel">
+                <div class="panel-header"><div><h2>Por categoria</h2><p>{{ periodo|capfirst }}</p></div></div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead><tr><th>Categoria</th><th>Tipo</th><th class="cell-number">Lançamentos</th><th class="cell-number">Total</th></tr></thead>
+                        <tbody>
+                            {% for linha in por_categoria %}
+                                <tr>
+                                    <td>{{ linha.categoria__nome }}</td>
+                                    <td><span class="cf-tipo cf-tipo-{{ linha.tipo }}">{% if linha.tipo == "entrada" %}Entrada · CR{% else %}Saída · CP{% endif %}</span></td>
+                                    <td class="cell-number num">{{ linha.quantidade }}</td>
+                                    <td class="cell-number num {% if linha.tipo == 'entrada' %}cf-entrada{% else %}cf-saida{% endif %}">R$ {{ linha.total|floatformat:"2g" }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        {% endif %}
+
+        {% if can_add %}
+            <section class="panel">
+                <div class="panel-header"><div><h2>Importar planilha</h2><p>Arquivo .xlsx com as colunas Data, Tipo, Categoria, Descrição, Entrada, Saída, Forma de pagamento e Observações.</p></div></div>
+                <form class="cf-import" method="post" action="{% url 'lancamentos-importar' %}" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <label class="visually-hidden" for="cf-arquivo">Planilha</label>
+                    <input class="form-control" type="file" id="cf-arquivo" name="arquivo" accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+                    <button class="button" type="submit">Importar</button>
+                    <p class="muted">Categorias que não existirem são criadas. Linhas repetidas (mesma data, categoria, descrição e valor) não são duplicadas.</p>
+                </form>
+            </section>
+        {% endif %}
+    </div>
+{% endblock %}

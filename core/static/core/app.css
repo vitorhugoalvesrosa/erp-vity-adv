@@ -4386,3 +4386,162 @@ body[data-heading-font="cinzel"] .brand-copy small {
         display: none;
     }
 }
+
+/* ---------- Controle financeiro (formato planilha) ---------- */
+
+.cf-entrada {
+    color: var(--success);
+}
+
+.cf-saida {
+    color: var(--danger);
+}
+
+.cf-sheet {
+    overflow: hidden;
+}
+
+.cf-band {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: center;
+    gap: 4px 12px;
+    margin: 0;
+    padding: 14px 16px;
+    color: #fff;
+    background: var(--navy);
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-align: center;
+}
+
+.cf-band span {
+    color: color-mix(in srgb, var(--mint) 70%, #fff);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.cf-table thead th {
+    color: var(--text);
+    background: color-mix(in srgb, var(--mint) 24%, var(--surface));
+    font-weight: 700;
+}
+
+.cf-table tbody tr:nth-child(even) td {
+    background: color-mix(in srgb, var(--blue) 4%, var(--surface));
+}
+
+.cf-table td.cf-entrada:not(:empty) {
+    background: color-mix(in srgb, var(--success) 8%, var(--surface));
+}
+
+.cf-table td.cf-saida:not(:empty) {
+    background: color-mix(in srgb, var(--danger) 7%, var(--surface));
+}
+
+.cf-table td.cf-entrada,
+.cf-table td.cf-saida {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.cf-table tfoot th,
+.cf-table tfoot td {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border-strong);
+    color: var(--text);
+    background: var(--surface-2);
+    font-weight: 700;
+    text-align: right;
+}
+
+.cf-table td.actions-col {
+    white-space: nowrap;
+}
+
+.cf-table td.actions-col .text-link + .text-link {
+    margin-left: 12px;
+}
+
+.cf-obs {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.cf-tipo {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.cf-tipo-entrada {
+    color: var(--success);
+    background: var(--success-soft);
+}
+
+.cf-tipo-saida {
+    color: var(--danger);
+    background: var(--danger-soft);
+}
+
+.cf-note {
+    margin: 0;
+    padding: 12px 16px;
+}
+
+.cf-bottom {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.cf-import {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    padding: 16px;
+}
+
+.cf-import .form-control {
+    flex: 1 1 240px;
+}
+
+.cf-import p {
+    flex-basis: 100%;
+    margin: 0;
+    font-size: 13px;
+}
+
+@media (max-width: 640px) {
+    .cf-table td:empty {
+        display: none;
+    }
+
+    .cf-table tfoot,
+    .cf-table tfoot tr {
+        display: block;
+    }
+
+    .cf-table tfoot tr {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .cf-table tfoot th,
+    .cf-table tfoot td {
+        border: 0;
+    }
+
+    .cf-table tfoot td:empty {
+        display: none;
+    }
+}
