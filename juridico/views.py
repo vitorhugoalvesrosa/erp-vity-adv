@@ -1,4 +1,5 @@
 import json
+import re
 import urllib.request
 
 from django.conf import settings
@@ -226,10 +227,15 @@ class IntegracaoTribunalViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def sincronizar(self, request, pk=None):
         integracao = self.get_object()
-        numero_cnj = request.data.get("numero_cnj", "").strip()
+        numero_cnj = re.sub(r"\D", "", str(request.data.get("numero_cnj", "")))
         if not numero_cnj:
             return Response(
                 {"detail": "Informe numero_cnj."},
+                status=400,
+            )
+        if len(numero_cnj) != 20:
+            return Response(
+                {"detail": "Número CNJ inválido: informe os 20 dígitos do processo."},
                 status=400,
             )
         if not integracao.ativo:
@@ -252,7 +258,7 @@ class IntegracaoTribunalViewSet(viewsets.ModelViewSet):
         payload = {
             "query": {
                 "match": {
-                    "numeroProcesso": "".join(numero_cnj.split()),
+                    "numeroProcesso": numero_cnj,
                 }
             },
             "size": 100,
