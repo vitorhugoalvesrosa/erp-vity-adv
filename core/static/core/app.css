@@ -1432,6 +1432,51 @@ a.alert-strip:hover {
     background: var(--warning-soft);
 }
 
+.tone-danger {
+    color: var(--danger);
+    background: var(--danger-soft);
+}
+
+.tone-success {
+    color: var(--success);
+    background: var(--success-soft);
+}
+
+/* Cartões de recebimento: vermelho = atrasado, verde = recebido. */
+.stat-card-danger {
+    border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+    background: color-mix(in srgb, var(--danger) 6%, var(--surface));
+}
+
+.stat-card-danger:hover {
+    border-color: color-mix(in srgb, var(--danger) 55%, var(--border));
+}
+
+.stat-card-danger .stat-value,
+.stat-card-danger .stat-note {
+    color: var(--danger);
+}
+
+.stat-card-success {
+    border-color: color-mix(in srgb, var(--success) 35%, var(--border));
+    background: color-mix(in srgb, var(--success) 6%, var(--surface));
+}
+
+.stat-card-success:hover {
+    border-color: color-mix(in srgb, var(--success) 55%, var(--border));
+}
+
+.stat-card-success .stat-value,
+.stat-card-success .stat-note {
+    color: var(--success);
+}
+
+.stat-note {
+    margin-top: -6px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
 :root[data-theme="dark"] .tone-violet {
     color: #c4b5fd;
 }

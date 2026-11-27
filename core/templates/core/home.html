@@ -21,7 +21,7 @@
 
     <section class="stats-grid" aria-label="Indicadores">
         {% for stat in stats %}
-            <a class="stat-card" href="{% url stat.url module=stat.module %}">
+            <a class="stat-card{% if stat.variant %} stat-card-{{ stat.variant }}{% endif %}" href="{% url stat.url module=stat.module %}">
                 <span class="stat-top">
                     {{ stat.label }}
                     <span class="stat-symbol tone-{{ stat.tone }}"><svg class="icon" aria-hidden="true"><use href="#icon-{{ stat.icon }}"></use></svg></span>
@@ -29,6 +29,7 @@
                 <strong class="stat-value">
                     {% if stat.kind == "currency" %}<small>R$</small> {{ stat.value|floatformat:"2g" }}{% else %}{{ stat.value }}{% endif %}
                 </strong>
+                {% if stat.note %}<span class="stat-note">{{ stat.note }}</span>{% endif %}
             </a>
         {% empty %}
             <div class="panel empty-state">

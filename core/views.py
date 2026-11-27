@@ -12,7 +12,7 @@ from django.core.mail import EmailMessage
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models.deletion import ProtectedError
-from django.db.models import Q, Sum
+from django.db.models import Count, Q, Sum
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -550,24 +550,59 @@ def home(request):
     open_receivables = ContaReceber.objects.exclude(
         status_pagamento=ContaReceber.StatusPagamento.PAGO
     )
+    # Atrasado: vencido e não pago, ou marcado como atrasado.
     overdue_receivables = open_receivables.filter(
-        data_vencimento__lt=timezone.localdate()
+        Q(data_vencimento__lt=timezone.localdate())
+        | Q(status_pagamento=ContaReceber.StatusPagamento.ATRASADO)
     )
     if can_view(ContaReceber):
-        stats.append(
+        def _soma(queryset):
+            dados = queryset.aggregate(total=Sum("valor_parcela"), quantidade=Count("pk"))
+            return dados["total"] or 0, dados["quantidade"]
+
+        no_prazo, qtd_no_prazo = _soma(open_receivables.exclude(pk__in=overdue_receivables.values("pk")))
+        atrasado, qtd_atrasado = _soma(overdue_receivables)
+        recebido, qtd_recebido = _soma(
+            ContaReceber.objects.filter(status_pagamento=ContaReceber.StatusPagamento.PAGO)
+        )
+        stats += [
             {
                 "label": "A receber",
-                "value": open_receivables.aggregate(total=Sum("valor_parcela"))[
-                    "total"
-                ]
-                or 0,
+                "value": no_prazo,
+                "note": f"{qtd_no_prazo} parcela{'s' if qtd_no_prazo != 1 else ''} no prazo",
                 "icon": "receivable",
                 "tone": "blue",
                 "kind": "currency",
                 "url": "record-list",
                 "module": "recebiveis",
-            }
-        )
+            },
+            {
+                "label": "Recebimentos atrasados",
+                "value": atrasado,
+                "note": (
+                    f"{qtd_atrasado} parcela{'s' if qtd_atrasado != 1 else ''} vencida{'s' if qtd_atrasado != 1 else ''}"
+                    if qtd_atrasado
+                    else "Nenhuma parcela atrasada"
+                ),
+                "icon": "alert",
+                "tone": "danger" if qtd_atrasado else "blue",
+                "variant": "danger" if qtd_atrasado else "",
+                "kind": "currency",
+                "url": "record-list",
+                "module": "recebiveis",
+            },
+            {
+                "label": "Recebido",
+                "value": recebido,
+                "note": f"{qtd_recebido} parcela{'s' if qtd_recebido != 1 else ''} recebida{'s' if qtd_recebido != 1 else ''}",
+                "icon": "check",
+                "tone": "success",
+                "variant": "success",
+                "kind": "currency",
+                "url": "record-list",
+                "module": "recebiveis",
+            },
+        ]
     if can_view(ContaPagar):
         a_pagar = ContaPagar.objects.filter(status=ContaPagar.Status.A_PAGAR)
         stats.append(
