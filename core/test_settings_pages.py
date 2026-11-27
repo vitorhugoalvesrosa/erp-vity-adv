@@ -188,3 +188,34 @@ class VisualIdentityColorTests(TestCase):
         CompanyProfile.objects.create(legal_name="X", cnpj="11669089000101", primary_color="#123456")
         self.post(primary_color="", sidebar_color="#0D3B45", accent_color="#F08A4B")
         self.assertEqual(CompanyProfile.objects.get().primary_color, "#123456")
+
+
+class HeadingFontTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin = get_user_model().objects.create_superuser("fonte-admin", "fonte@example.com", "test-password")
+
+    def test_fonte_cinzel_aplicada_em_todo_o_sistema(self):
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse("visual-identity"),
+            {
+                "legal_name": "Benites e Silva",
+                "cnpj": "11669089000101",
+                "primary_color": "6, 45, 79",
+                "sidebar_color": "4, 34, 60",
+                "accent_color": "212, 175, 55",
+                "heading_font": "cinzel",
+            },
+        )
+        self.assertRedirects(response, reverse("visual-identity"))
+        home = self.client.get(reverse("home"))
+        self.assertContains(home, 'data-heading-font="cinzel"')
+        self.assertContains(home, "cinzel-latin.woff2")
+
+    def test_padrao_nao_carrega_a_fonte(self):
+        CompanyProfile.objects.create(legal_name="X", cnpj="11669089000101")
+        self.client.force_login(self.admin)
+        home = self.client.get(reverse("home"))
+        self.assertContains(home, 'data-heading-font="padrao"')
+        self.assertNotContains(home, "cinzel-latin.woff2")

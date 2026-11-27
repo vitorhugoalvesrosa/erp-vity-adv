@@ -22,6 +22,25 @@
     unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
+/* Cinzel: fonte opcional dos títulos (Identidade visual → Fonte dos títulos). */
+@font-face {
+    font-family: "Cinzel";
+    font-style: normal;
+    font-weight: 400 900;
+    font-display: swap;
+    src: url("fonts/cinzel-latin.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: "Cinzel";
+    font-style: normal;
+    font-weight: 400 900;
+    font-display: swap;
+    src: url("fonts/cinzel-latin-ext.woff2") format("woff2");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
 /* ---------- Tokens ---------- */
 
 :root {
@@ -141,6 +160,31 @@
     --shadow-xs: 0 1px 2px rgb(0 0 0 / 30%);
     --shadow-sm: 0 1px 3px rgb(0 0 0 / 40%);
     --shadow-lg: 0 16px 40px -8px rgb(0 0 0 / 60%);
+}
+
+/* A Identidade visual define --blue no <body>. Os tokens derivados são recalculados
+   aqui; definidos só no :root, eles ficariam presos à cor padrão. */
+body {
+    --brand: var(--blue);
+    --brand-hover: color-mix(in srgb, var(--blue) 86%, #000);
+    --brand-soft: color-mix(in srgb, var(--blue) 10%, var(--surface));
+    --brand-text: color-mix(in srgb, var(--blue) 80%, var(--text));
+    --ring: color-mix(in srgb, var(--blue) 28%, transparent);
+    --info: var(--brand-text);
+    --info-soft: var(--brand-soft);
+    --blue-dark: var(--brand-hover);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) body {
+        --brand-soft: color-mix(in srgb, var(--blue) 18%, var(--surface));
+        --brand-text: color-mix(in srgb, var(--blue) 55%, #fff);
+    }
+}
+
+:root[data-theme="dark"] body {
+    --brand-soft: color-mix(in srgb, var(--blue) 18%, var(--surface));
+    --brand-text: color-mix(in srgb, var(--blue) 55%, #fff);
 }
 
 /* ---------- Base ---------- */
@@ -4181,4 +4225,33 @@ datalist + .form-section-title {
 
 .color-help {
     margin-top: 12px;
+}
+
+/* ---------- Fonte dos títulos ---------- */
+
+body[data-heading-font="cinzel"] {
+    --font-heading: "Cinzel", Georgia, "Times New Roman", serif;
+}
+
+body[data-heading-font="cinzel"] .content h1,
+body[data-heading-font="cinzel"] .content h2,
+body[data-heading-font="cinzel"] .brand-copy,
+body[data-heading-font="cinzel"] .wa-chat-title strong {
+    font-family: var(--font-heading);
+    letter-spacing: 0.01em;
+}
+
+body[data-heading-font="cinzel"] .content h1 {
+    font-weight: 700;
+}
+
+body[data-heading-font="cinzel"] .brand-copy small {
+    font-family: var(--font);
+    letter-spacing: normal;
+}
+
+.branding-preview[data-heading-font="cinzel"] .branding-preview-main strong,
+.branding-preview[data-heading-font="cinzel"] .branding-preview-sidebar strong {
+    font-family: "Cinzel", Georgia, "Times New Roman", serif;
+    letter-spacing: 0.01em;
 }

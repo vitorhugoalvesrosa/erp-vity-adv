@@ -10,7 +10,7 @@
         <a class="button button-secondary" href="{% url 'admin-settings' %}">Voltar à administração</a>
     </header>
 
-    <section class="branding-preview" style="--preview-primary: {{ company_profile.primary_color|default:'#0B7A83' }}; --preview-sidebar: {{ sidebar_color }}; --preview-accent: {{ company_profile.accent_color|default:'#F08A4B' }}" aria-label="Prévia das cores">
+    <section class="branding-preview" data-heading-font="{{ form.heading_font.value|default:'padrao' }}" style="--preview-primary: {{ company_profile.primary_color|default:'#0B7A83' }}; --preview-sidebar: {{ sidebar_color }}; --preview-accent: {{ company_profile.accent_color|default:'#F08A4B' }}" aria-label="Prévia das cores">
         <div class="branding-preview-sidebar">
             <span class="branding-preview-mark">{{ company_display_name|slice:":1"|upper }}</span>
             <strong>{{ company_display_name }}</strong>
@@ -80,6 +80,10 @@
                 }
                 return null;
             };
+            const headingFont = document.getElementById("id_heading_font");
+            if (headingFont && preview) {
+                headingFont.addEventListener("change", () => { preview.dataset.headingFont = headingFont.value; });
+            }
             const toRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(", ");
             document.querySelectorAll("[data-color-field]").forEach((wrapper) => {
                 const name = wrapper.dataset.colorField;

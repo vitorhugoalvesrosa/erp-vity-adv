@@ -85,6 +85,17 @@ class CompanyProfile(models.Model):
         default="#F08A4B",
         validators=[RegexValidator(r"^#[0-9A-Fa-f]{6}$", "Informe uma cor hexadecimal.")],
     )
+    class HeadingFont(models.TextChoices):
+        PADRAO = "padrao", "Padrão do sistema (Manrope)"
+        CINZEL = "cinzel", "Clássica (Cinzel)"
+
+    heading_font = models.CharField(
+        "Fonte dos títulos",
+        max_length=20,
+        choices=HeadingFont.choices,
+        default=HeadingFont.PADRAO,
+        help_text="Usada nos títulos das páginas e painéis e no nome da empresa no menu.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

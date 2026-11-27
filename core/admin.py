@@ -53,6 +53,7 @@ class CompanyProfileAdmin(admin.ModelAdmin):
                     "primary_color",
                     "sidebar_color",
                     "accent_color",
+                    "heading_font",
                 )
             },
         ),

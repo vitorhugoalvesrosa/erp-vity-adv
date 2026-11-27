@@ -75,6 +75,8 @@ class CompanyProfileForm(forms.ModelForm):
                     "spellcheck": "false",
                 }
             )
+        if "heading_font" in self.fields:
+            self.fields["heading_font"].required = False
         if not self.instance.has_logo:
             del self.fields["remove_logo"]
 
@@ -87,6 +89,11 @@ class CompanyProfileForm(forms.ModelForm):
                 else CompanyProfile._meta.get_field(field_name).get_default()
             )
         return parse_color(value)
+
+    def clean_heading_font(self):
+        return self.cleaned_data.get("heading_font") or (
+            self.instance.heading_font if self.instance.pk else CompanyProfile.HeadingFont.PADRAO
+        )
 
     def clean_primary_color(self):
         return self._clean_color("primary_color")
@@ -159,6 +166,7 @@ class CompanyVisualIdentityForm(CompanyProfileForm):
             "primary_color",
             "sidebar_color",
             "accent_color",
+            "heading_font",
         )
 
 
