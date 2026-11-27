@@ -230,7 +230,7 @@ class PublicacaoTriagemTests(AstreaBase):
         self.client.post(url, {"action": "descartar"})
         pub.refresh_from_db()
         self.assertTrue(pub.descartada)
-        self.assertEqual(pub.tratada_em.date(), timezone.localdate())
+        self.assertEqual(timezone.localtime(pub.tratada_em).date(), timezone.localdate())
         kpis = self.client.get(reverse("record-list", args=["publicacoes"])).context["publication_kpis"]
         self.assertEqual((kpis["nao_tratadas"], kpis["descartadas_hoje"]), (1, 1))
 
