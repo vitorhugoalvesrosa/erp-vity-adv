@@ -3,6 +3,7 @@ from datetime import timedelta
 from io import BytesIO
 from xml.sax.saxutils import escape
 
+from django import forms
 from django.contrib import messages
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
@@ -27,6 +28,7 @@ from reportlab.platypus import Image, KeepTogether, Paragraph, SimpleDocTemplate
 from crm.models import Conta, Proposta
 from financeiro.models import CategoriaFinanceira, Contrato, ContaPagar, ContaReceber, Lancamento, PedidoVenda
 from juridico.models import (
+    Advogado,
     Atendimento,
     Audiencia,
     Despesa,
@@ -34,6 +36,7 @@ from juridico.models import (
     Movimentacao,
     Prazo,
     Processo,
+    ProcessoEncontrado,
     Publicacao,
     Tarefa,
     Timesheet,
@@ -42,6 +45,7 @@ from produtos.models import Produto
 from .email_config import get_smtp_settings
 from .configuration_forms import CompanyVisualIdentityForm
 from .forms import (
+    AdvogadoForm,
     AtendimentoForm,
     AudienciaForm,
     ContaForm,
@@ -108,6 +112,22 @@ def _gendered(config, masculine, feminine):
 
 
 MODULES = {
+    "advogados": {
+        "title": "Advogados",
+        "singular": "advogado",
+        "app": "juridico",
+        "model": Advogado,
+        "form": AdvogadoForm,
+        "columns": [
+            ("nome", "Advogado", "text"),
+            ("oab", "OAB", "text"),
+            ("tipo", "Tipo", "choice"),
+            ("telefone", "Telefone", "text"),
+            ("ativo", "Situação", "boolean"),
+        ],
+        "search": ("nome", "oab_numero", "email"),
+        "select_related": (),
+    },
     "processos": {
         "title": "Processos",
         "singular": "processo",
@@ -799,8 +819,14 @@ def record_edit(request, module, pk=None):
     if not instance and request.method == "GET":
         # Permite links que já abrem o cadastro preenchido (ex.: cronômetro, converter atendimento).
         allowed = set(config["form"]._meta.fields or ())
+        multiplos = {
+            name for name, field in config["form"].base_fields.items()
+            if isinstance(field, forms.ModelMultipleChoiceField)
+        }
         form_kwargs["initial"] = {
-            key: value[:500] for key, value in request.GET.items() if key in allowed
+            key: (request.GET.getlist(key) if key in multiplos else value[:500])
+            for key, value in request.GET.items()
+            if key in allowed
         }
         for user_field in ("responsavel", "usuario"):
             if user_field in allowed:
@@ -814,6 +840,14 @@ def record_edit(request, module, pk=None):
             # Registra quem criou (inclusive as cópias de contas repetidas).
             for obj in [saved, *getattr(form, "created_extra", [])]:
                 type(obj).objects.filter(pk=obj.pk).update(criado_por=request.user)
+        encontrado_id = request.GET.get("encontrado", "")
+        if module == "processos" and not instance and encontrado_id.isdigit():
+            encontrado = ProcessoEncontrado.objects.filter(pk=int(encontrado_id)).first()
+            if encontrado:
+                saved.advogados.add(*encontrado.advogados.all())
+                encontrado.processo = saved
+                encontrado.situacao = ProcessoEncontrado.Situacao.VINCULADO
+                encontrado.save(update_fields=["processo", "situacao", "atualizado_em"])
         atendimento_id = request.GET.get("atendimento", "")
         if module == "processos" and not instance and atendimento_id.isdigit():
             Atendimento.objects.filter(pk=int(atendimento_id), cliente=saved.cliente).update(

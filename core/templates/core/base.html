@@ -78,6 +78,11 @@
                     <span>Jurídico</span><span class="nav-group-indicator" aria-hidden="true"><svg class="icon"><use href="#icon-chevron-down"></use></svg></span>
                 </button>
                 <nav class="sidebar-nav" id="nav-juridico" aria-label="Jurídico">
+                    {% if perms.juridico.view_advogado %}
+                        <a class="nav-link {% if active_module == 'advogados' %}is-active{% endif %}" href="{% url 'record-list' module='advogados' %}">
+                            <svg class="nav-icon" aria-hidden="true"><use href="#icon-gavel"></use></svg> Advogados
+                        </a>
+                    {% endif %}
                     {% if perms.juridico.view_processo %}
                         <a class="nav-link {% if active_module == 'processos' %}is-active{% endif %}" href="{% url 'record-list' module='processos' %}">
                             <svg class="nav-icon" aria-hidden="true"><use href="#icon-process"></use></svg> Processos

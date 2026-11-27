@@ -2,6 +2,8 @@ from django.contrib import admin
 
 from core.admin_site import erp_admin_site
 from .models import (
+    Advogado,
+    ProcessoEncontrado,
     Atendimento,
     Audiencia,
     Despesa,
@@ -100,3 +102,18 @@ class PecaJuridicaAdmin(admin.ModelAdmin):
     list_display = ("titulo", "tipo", "processo", "criado_por", "atualizada_em")
     list_filter = ("tipo",)
     search_fields = ("titulo", "instrucoes", "conteudo")
+
+
+@admin.register(Advogado, site=erp_admin_site)
+class AdvogadoAdmin(admin.ModelAdmin):
+    list_display = ("nome", "oab_uf", "oab_numero", "tipo", "ativo", "ultima_busca_em")
+    list_filter = ("tipo", "ativo", "oab_uf")
+    search_fields = ("nome", "oab_numero", "email")
+
+
+@admin.register(ProcessoEncontrado, site=erp_admin_site)
+class ProcessoEncontradoAdmin(admin.ModelAdmin):
+    list_display = ("numero_cnj", "tribunal", "situacao", "ultima_publicacao", "total_publicacoes", "processo")
+    list_filter = ("situacao", "tribunal")
+    search_fields = ("numero_cnj", "polo_ativo", "polo_passivo")
+    filter_horizontal = ("advogados",)

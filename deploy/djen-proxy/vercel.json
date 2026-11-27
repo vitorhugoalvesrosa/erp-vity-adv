@@ -1,0 +1,4 @@
+{
+  "regions": ["gru1"],
+  "functions": { "api/comunicacao.js": { "maxDuration": 30 } }
+}

@@ -15,8 +15,8 @@
             {% if form.non_field_errors %}<div class="form-error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
             <div class="form-grid">
                 {% for field in form %}
-                    <div class="form-field {% if field.name == 'descricao' or field.name == 'recipients' or field.name == 'message' %}is-wide{% endif %}" id="field-row-{{ field.name }}">
-                        {% if field.field.widget.input_type == "checkbox" %}
+                    <div class="form-field {% if field.name == 'descricao' or field.name == 'recipients' or field.name == 'message' or field.name == 'advogados' %}is-wide{% endif %}" id="field-row-{{ field.name }}">
+                        {% if field.field.widget.input_type == "checkbox" and not field.field.widget.allow_multiple_selected %}
                             <label class="form-checkbox-row" for="{{ field.id_for_label }}">{{ field }} {{ field.label }}</label>
                         {% else %}
                             <label for="{{ field.id_for_label }}">{{ field.label }}</label>

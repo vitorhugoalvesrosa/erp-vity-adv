@@ -14,6 +14,10 @@ services:
         generateValue: true
       - key: CONFIG_ENCRYPTION_KEY
         sync: false
+      - key: DJEN_BASE_URL
+        sync: false
+      - key: DJEN_PROXY_TOKEN
+        sync: false
       - key: DEBUG
         value: "false"
       - key: SECURE_SSL_REDIRECT

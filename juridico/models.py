@@ -8,6 +8,62 @@ from django.utils import timezone
 from crm.models import Conta
 
 
+UFS = [
+    (uf, uf)
+    for uf in (
+        "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA",
+        "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
+    )
+]
+
+
+def somente_digitos(valor):
+    return "".join(ch for ch in str(valor or "") if ch.isdigit())
+
+
+class Advogado(models.Model):
+    class Tipo(models.TextChoices):
+        PRINCIPAL = "principal", "Advogado principal"
+        PARCEIRO = "parceiro", "Parceiro"
+
+    nome = models.CharField("Nome", max_length=255)
+    oab_numero = models.CharField("Número da OAB", max_length=10, help_text="Só os números, sem a UF.")
+    oab_uf = models.CharField("UF da OAB", max_length=2, choices=UFS, default="RJ")
+    tipo = models.CharField("Tipo", max_length=20, choices=Tipo.choices, default=Tipo.PRINCIPAL)
+    email = models.EmailField("E-mail", blank=True)
+    telefone = models.CharField("Telefone", max_length=30, blank=True)
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="advogados", verbose_name="Usuário no sistema",
+        help_text="Opcional: liga o advogado a um login do ERP.",
+    )
+    ativo = models.BooleanField("Ativo", default=True)
+    observacoes = models.TextField("Observações", blank=True)
+    ultima_busca_em = models.DateTimeField("Última busca no DJEN", null=True, blank=True, editable=False)
+    ultima_busca_mensagem = models.CharField(max_length=255, blank=True, editable=False)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["tipo", "nome"]
+        verbose_name = "Advogado"
+        verbose_name_plural = "Advogados"
+        constraints = [
+            models.UniqueConstraint(fields=["oab_numero", "oab_uf"], name="advogado_oab_unica"),
+        ]
+
+    def __str__(self):
+        return f"{self.nome} ({self.oab})"
+
+    @property
+    def oab(self):
+        return f"OAB/{self.oab_uf} {self.oab_numero}"
+
+    def clean(self):
+        self.oab_numero = somente_digitos(self.oab_numero).lstrip("0")
+        if not self.oab_numero:
+            raise ValidationError({"oab_numero": "Informe o número da OAB."})
+
+
 class Processo(models.Model):
     class Area(models.TextChoices):
         CIVEL = "civel", "Cível"
@@ -52,6 +108,10 @@ class Processo(models.Model):
         max_digits=14,
         decimal_places=2,
         default=0,
+    )
+    advogados = models.ManyToManyField(
+        Advogado, blank=True, related_name="processos", verbose_name="Advogados",
+        help_text="Advogados do escritório e parceiros que atuam no processo.",
     )
     observacoes = models.TextField("Observações", blank=True)
     resumo_ia = models.TextField("Resumo gerado por IA", blank=True, editable=False)
@@ -490,3 +550,36 @@ class PecaJuridica(models.Model):
 
     def __str__(self):
         return self.titulo
+
+
+class ProcessoEncontrado(models.Model):
+    """Processo achado nas publicações do DJEN pela OAB de um advogado cadastrado."""
+
+    class Situacao(models.TextChoices):
+        NOVO = "novo", "Não cadastrado"
+        VINCULADO = "vinculado", "Já no ERP"
+        IGNORADO = "ignorado", "Ignorado"
+
+    numero_cnj = models.CharField("Número CNJ", max_length=25, unique=True)
+    tribunal = models.CharField("Tribunal", max_length=30, blank=True)
+    orgao = models.CharField("Órgão", max_length=255, blank=True)
+    classe = models.CharField("Classe", max_length=255, blank=True)
+    polo_ativo = models.CharField("Polo ativo", max_length=500, blank=True)
+    polo_passivo = models.CharField("Polo passivo", max_length=500, blank=True)
+    ultima_publicacao = models.DateField("Última publicação", null=True, blank=True)
+    total_publicacoes = models.PositiveIntegerField("Publicações", default=0)
+    link = models.URLField("Link da última publicação", max_length=500, blank=True)
+    advogados = models.ManyToManyField(Advogado, related_name="processos_encontrados")
+    processo = models.ForeignKey(
+        Processo, on_delete=models.SET_NULL, null=True, blank=True, related_name="encontrados_djen"
+    )
+    situacao = models.CharField(max_length=20, choices=Situacao.choices, default=Situacao.NOVO)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-ultima_publicacao", "numero_cnj"]
+        verbose_name = "Processo encontrado no DJEN"
+        verbose_name_plural = "Processos encontrados no DJEN"
+
+    def __str__(self):
+        return self.numero_cnj

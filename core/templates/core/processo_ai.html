@@ -101,6 +101,7 @@
                     <div><dt>Área</dt><dd>{{ processo.get_area_display }}</dd></div>
                     <div><dt>Status</dt><dd>{{ processo.get_status_display }}</dd></div>
                     <div><dt>Responsável</dt><dd>{{ processo.responsavel.get_full_name|default:processo.responsavel.username }}</dd></div>
+                    <div><dt>Advogados</dt><dd>{% for adv in processo.advogados.all %}<a class="text-link" href="{% url 'advogado-detalhe' pk=adv.pk %}">{{ adv.nome }}</a> <small>{{ adv.oab }}{% if adv.tipo == "parceiro" %} · parceiro{% endif %}</small>{% if not forloop.last %}<br>{% endif %}{% empty %}—{% endfor %}</dd></div>
                     <div><dt>Valor da causa</dt><dd class="num">R$ {{ processo.valor_causa|floatformat:"2g" }}</dd></div>
                 </dl>
             </section>

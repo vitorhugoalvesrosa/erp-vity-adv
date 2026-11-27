@@ -14,6 +14,7 @@ from financeiro.models import (
     PedidoVenda,
 )
 from juridico.models import (
+    Advogado,
     Atendimento,
     Audiencia,
     Despesa,
@@ -52,7 +53,9 @@ class ERPModelForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
-            if isinstance(field.widget, forms.CheckboxInput):
+            if isinstance(field.widget, forms.CheckboxSelectMultiple):
+                field.widget.attrs["class"] = "form-checkbox-list"
+            elif isinstance(field.widget, forms.CheckboxInput):
                 field.widget.attrs["class"] = "form-checkbox"
             elif isinstance(field, forms.DateTimeField):
                 field.widget = forms.DateTimeInput(
@@ -290,8 +293,41 @@ class ProcessoForm(ERPModelForm):
             "status",
             "responsavel",
             "valor_causa",
+            "advogados",
             "observacoes",
         )
+        widgets = {"advogados": forms.CheckboxSelectMultiple}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        ativos = models.Q(ativo=True)
+        if self.instance.pk:
+            ativos |= models.Q(pk__in=self.instance.advogados.values("pk"))
+        self.fields["advogados"].queryset = Advogado.objects.filter(ativos)
+
+
+class AdvogadoForm(ERPModelForm):
+    oab_numero = forms.CharField(
+        label="Número da OAB", max_length=20, help_text="Só os números, sem a UF. Ex.: 123456."
+    )
+
+    class Meta:
+        model = Advogado
+        fields = ("nome", "oab_numero", "oab_uf", "tipo", "email", "telefone", "usuario", "ativo", "observacoes")
+        widgets = {"observacoes": forms.Textarea(attrs={"rows": 3})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["usuario"].empty_label = "Nenhum"
+        self.fields["oab_numero"].widget.attrs.update({"inputmode": "numeric", "autocomplete": "off"})
+
+    def clean_oab_numero(self):
+        numero = "".join(ch for ch in self.cleaned_data.get("oab_numero", "") if ch.isdigit()).lstrip("0")
+        if not numero:
+            raise forms.ValidationError("Informe o número da OAB.")
+        if len(numero) > 10:
+            raise forms.ValidationError("Número da OAB longo demais.")
+        return numero
 
 
 class MovimentacaoForm(ERPModelForm):

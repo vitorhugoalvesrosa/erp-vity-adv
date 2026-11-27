@@ -4545,3 +4545,127 @@ body[data-heading-font="cinzel"] .brand-copy small {
         display: none;
     }
 }
+
+/* ---------- Advogados e busca por OAB ---------- */
+
+.notice {
+    margin: 0 16px 16px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-2);
+    background: var(--surface-2);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.notice-warning {
+    border-color: color-mix(in srgb, var(--warning) 35%, var(--border));
+    background: var(--warning-soft);
+}
+
+.notice code {
+    font-size: 12px;
+}
+
+.adv-stack {
+    display: grid;
+    gap: 16px;
+}
+
+.adv-ignorados {
+    margin-top: 0;
+}
+
+.adv-busca {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 12px;
+    padding: 0 16px 16px;
+}
+
+.adv-busca label {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.adv-busca .form-select {
+    width: auto;
+    min-width: 180px;
+}
+
+.adv-busca .muted {
+    flex-basis: 100%;
+    font-size: 13px;
+}
+
+.cell-sub {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.link-button {
+    padding: 0;
+    border: 0;
+    color: var(--muted);
+    background: none;
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.link-button:hover {
+    color: var(--text);
+    text-decoration: underline;
+}
+
+.adv-acoes {
+    white-space: nowrap;
+}
+
+.adv-acoes form {
+    display: inline;
+    margin-left: 12px;
+}
+
+.adv-ignorados {
+    padding: 12px 16px;
+}
+
+.adv-ignorados summary {
+    color: var(--muted);
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.adv-ignorados .mini-list {
+    margin-top: 8px;
+}
+
+.form-checkbox-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+    gap: 6px 16px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+}
+
+.form-checkbox-list label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+    color: var(--text-2);
+    font-size: 14px;
+    font-weight: 400;
+    cursor: pointer;
+}
+
+.form-checkbox-list input {
+    accent-color: var(--brand);
+}

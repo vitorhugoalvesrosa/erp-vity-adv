@@ -202,6 +202,11 @@ EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "10"))
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER)
 CONFIG_ENCRYPTION_KEY = os.getenv("CONFIG_ENCRYPTION_KEY", "")
 
+# DJEN (publicações do CNJ). A API só atende acessos do Brasil: fora dele, aponte para um
+# ponto de acesso no Brasil (deploy/djen-proxy/) e informe o token combinado.
+DJEN_BASE_URL = os.getenv("DJEN_BASE_URL", "")
+DJEN_PROXY_TOKEN = os.getenv("DJEN_PROXY_TOKEN", "")
+
 # WhatsApp Cloud API e IA do primeiro atendimento
 WHATSAPP_PHONE_ID = os.getenv("WHATSAPP_PHONE_ID", "")
 WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
