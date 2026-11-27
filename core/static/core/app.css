@@ -4075,3 +4075,49 @@ datalist + .form-section-title {
 .toggle-list + .form-section-title {
     margin-top: 24px;
 }
+
+/* ---------- Empresa e integrações ---------- */
+
+.required-mark {
+    color: var(--danger);
+}
+
+.settings-summary {
+    display: grid;
+    justify-items: start;
+    gap: 6px;
+}
+
+.settings-summary h2 {
+    margin: 4px 0 0;
+}
+
+.settings-logo {
+    max-width: 160px;
+    max-height: 64px;
+    object-fit: contain;
+}
+
+.settings-logo-placeholder {
+    display: grid;
+    width: 48px;
+    height: 48px;
+    place-items: center;
+    border-radius: var(--radius-lg);
+    color: var(--brand-text);
+    background: var(--brand-soft);
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.settings-file-name {
+    overflow: hidden;
+    font-size: 15px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ai-provider-list li .row-action-button {
+    justify-self: start;
+    font-size: 13px;
+}

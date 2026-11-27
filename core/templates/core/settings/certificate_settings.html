@@ -1,0 +1,75 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Administração · Empresa e integrações</p>
+            <h1>Certificado digital A1</h1>
+            <p>Certificado e-CNPJ ou e-CPF em arquivo (.pfx ou .p12), usado em integrações que exigem assinatura digital.</p>
+        </div>
+        <a class="button button-secondary" href="{% url 'admin-settings' %}">Voltar à administração</a>
+    </header>
+
+    <section class="ai-status-grid" aria-label="Situação do certificado">
+        <article class="panel ai-status-card">
+            <span class="ai-status-label">Situação</span>
+            {% if not certificate %}
+                <span class="badge badge-neutral">Nenhum certificado</span>
+                <p>Envie o arquivo e a senha no formulário abaixo.</p>
+            {% elif expired %}
+                <span class="badge badge-danger">Vencido</span>
+                <p>Venceu em {{ certificate.valid_until|date:"d/m/Y" }}. Envie o certificado renovado.</p>
+            {% elif expiring %}
+                <span class="badge badge-warning">Vence em breve</span>
+                <p>Faltam {{ days_left }} dia{{ days_left|pluralize }}. Providencie a renovação.</p>
+            {% else %}
+                <span class="badge badge-success">Válido</span>
+                <p>Faltam {{ days_left }} dias para o vencimento.</p>
+            {% endif %}
+        </article>
+        <article class="panel ai-status-card">
+            <span class="ai-status-label">Válido até</span>
+            <strong class="ai-status-value num">{% if certificate %}{{ certificate.valid_until|date:"d/m/Y" }}{% else %}—{% endif %}</strong>
+            <p>{% if certificate %}às {{ certificate.valid_until|date:"H:i" }}{% else %}Sem certificado cadastrado.{% endif %}</p>
+        </article>
+        <article class="panel ai-status-card">
+            <span class="ai-status-label">Arquivo</span>
+            <strong class="settings-file-name">{{ certificate.original_filename|default:"—" }}</strong>
+            <p>{% if certificate %}Série <span class="num">{{ certificate.serial_number|truncatechars:24 }}</span> · enviado em {{ certificate.uploaded_at|date:"d/m/Y" }}{% else %}Nenhum arquivo enviado.{% endif %}</p>
+        </article>
+    </section>
+
+    <div class="ai-settings-layout">
+        <section class="panel record-form-panel">
+            <h2 class="form-section-title">{% if certificate %}Substituir certificado{% else %}Enviar certificado{% endif %}</h2>
+            <form method="post" enctype="multipart/form-data" novalidate>
+                {% csrf_token %}
+                {% if form.non_field_errors %}<div class="form-error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+                <div class="form-grid">
+                    {% for field in form %}{% include "core/settings/_field.html" with wide=True %}{% endfor %}
+                </div>
+                <div class="form-actions">
+                    <a class="button button-secondary" href="{% url 'admin-settings' %}">Cancelar</a>
+                    <button class="button" type="submit">Validar e salvar</button>
+                </div>
+            </form>
+        </section>
+
+        <aside class="ai-help">
+            <section class="admin-note">
+                <svg class="nav-icon" aria-hidden="true"><use href="#icon-shield"></use></svg>
+                <p><strong>Proteção</strong> — o arquivo e a senha são validados e criptografados no banco com <code>CONFIG_ENCRYPTION_KEY</code>. O certificado não fica disponível para download e não é publicado em <code>/media/</code>.</p>
+            </section>
+            <section class="admin-note">
+                <svg class="nav-icon" aria-hidden="true"><use href="#icon-info"></use></svg>
+                <p><strong>Formatos aceitos</strong> — .pfx ou .p12 de até 5 MB. Certificados A3 (token ou cartão) não podem ser enviados.</p>
+            </section>
+            {% if certificate %}
+                <form method="post" action="{% url 'certificate-remove' %}" class="ai-disconnect" onsubmit="return confirm('Apagar o certificado A1 e a senha do banco?');">
+                    {% csrf_token %}
+                    <button class="text-link text-danger row-action-button" type="submit">Apagar certificado do banco</button>
+                </form>
+            {% endif %}
+        </aside>
+    </div>
+{% endblock %}

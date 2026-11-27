@@ -1,0 +1,55 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Administração · Empresa e integrações</p>
+            <h1>Dados da empresa</h1>
+            <p>Razão social, CNPJ, endereço e contatos usados em contratos, documentos e e-mails do sistema.</p>
+        </div>
+        <a class="button button-secondary" href="{% url 'admin-settings' %}">Voltar à administração</a>
+    </header>
+
+    <div class="ai-settings-layout">
+        <section class="panel record-form-panel">
+            {% if not profile %}
+                <p class="form-intro">Primeiro cadastro da empresa. Razão social e CNPJ são obrigatórios.</p>
+            {% endif %}
+            <form method="post" novalidate>
+                {% csrf_token %}
+                {% if form.non_field_errors %}<div class="form-error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+                {% for title, names in sections %}
+                    <h2 class="form-section-title">{{ title }}</h2>
+                    <div class="form-grid">
+                        {% for field in form %}
+                            {% if field.name in names %}
+                                {% include "core/settings/_field.html" with wide=False %}
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+                <div class="form-actions">
+                    <a class="button button-secondary" href="{% url 'admin-settings' %}">Cancelar</a>
+                    <button class="button" type="submit">Salvar dados</button>
+                </div>
+            </form>
+        </section>
+
+        <aside class="ai-help">
+            <section class="panel ai-help-card settings-summary">
+                {% if company_profile.has_logo %}
+                    <img class="settings-logo" src="{% url 'company-logo' %}?v={{ company_profile.updated_at|date:'U' }}" alt="Logo de {{ company_display_name }}">
+                {% else %}
+                    <span class="settings-logo-placeholder" aria-hidden="true">{{ company_display_name|slice:":1"|upper }}</span>
+                {% endif %}
+                <h2>{{ company_display_name }}</h2>
+                {% if profile %}<p class="helptext">Atualizado em {{ profile.updated_at|date:"d/m/Y H:i" }}</p>{% endif %}
+                <a class="text-link" href="{% url 'visual-identity' %}">Alterar logo e cores</a>
+            </section>
+            <section class="admin-note">
+                <svg class="nav-icon" aria-hidden="true"><use href="#icon-info"></use></svg>
+                <p><strong>Onde esses dados aparecem</strong> — no cabeçalho dos contratos em PDF, nas peças geradas e no nome exibido no topo do sistema.</p>
+            </section>
+        </aside>
+    </div>
+{% endblock %}

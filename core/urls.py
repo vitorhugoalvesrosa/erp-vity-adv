@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import ai_views, juridico_views, views
+from . import ai_views, juridico_views, settings_views, views
 
 urlpatterns = [
     path("", views.home, name="home"),
@@ -10,6 +10,11 @@ urlpatterns = [
         views.visual_identity,
         name="visual-identity",
     ),
+    path("administracao/empresa/", settings_views.company_data, name="company-data"),
+    path("administracao/email/", settings_views.email_settings, name="email-settings"),
+    path("administracao/email/remover/", settings_views.email_settings_remove, name="email-settings-remove"),
+    path("administracao/certificado/", settings_views.certificate_settings, name="certificate-settings"),
+    path("administracao/certificado/remover/", settings_views.certificate_remove, name="certificate-remove"),
     path("administracao/ia/", ai_views.ai_settings, name="ai-settings"),
     path("administracao/ia/desconectar/", ai_views.ai_settings_remove, name="ai-settings-remove"),
     path("assistente/", ai_views.assistant, name="ai-assistant"),

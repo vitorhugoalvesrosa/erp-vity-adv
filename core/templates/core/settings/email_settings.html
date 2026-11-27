@@ -1,0 +1,126 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Administração · Empresa e integrações</p>
+            <h1>E-mail (SMTP)</h1>
+            <p>Conta usada para enviar recuperação de senha, comunicados e avisos do sistema.</p>
+        </div>
+        <a class="button button-secondary" href="{% url 'admin-settings' %}">Voltar à administração</a>
+    </header>
+
+    <section class="ai-status-grid" aria-label="Situação do e-mail">
+        <article class="panel ai-status-card">
+            <span class="ai-status-label">Situação</span>
+            {% if not config %}
+                <span class="badge badge-neutral">Não configurado</span>
+                <p>Sem configuração salva, o sistema usa as variáveis de ambiente, se existirem.</p>
+            {% elif not config.is_active %}
+                <span class="badge badge-warning">Desativado</span>
+                <p>{{ config.from_email }} via {{ config.host }}</p>
+            {% else %}
+                <span class="badge badge-success">Ativo</span>
+                <p>{{ config.from_email }} via {{ config.host }}:{{ config.port }}</p>
+            {% endif %}
+            {% if config %}
+                <form method="post" class="ai-status-action">
+                    {% csrf_token %}
+                    <button class="button button-secondary" type="submit" name="action" value="test">Testar conexão</button>
+                </form>
+            {% endif %}
+        </article>
+        <article class="panel ai-status-card">
+            <span class="ai-status-label">Segurança</span>
+            {% if not config %}<span class="badge badge-neutral">—</span>
+            {% else %}<span class="badge {% if config.use_tls or config.use_ssl %}badge-success{% else %}badge-warning{% endif %}">{% if config.use_ssl %}SSL{% elif config.use_tls %}TLS{% else %}Sem criptografia{% endif %}</span>{% endif %}
+            <p>A senha é criptografada no banco e nunca é exibida.</p>
+        </article>
+        <article class="panel ai-status-card">
+            <span class="ai-status-label">Última alteração</span>
+            <strong class="ai-status-value num">{% if config %}{{ config.updated_at|date:"d/m/Y" }}{% else %}—{% endif %}</strong>
+            <p>{% if config %}às {{ config.updated_at|date:"H:i" }}{% else %}Nenhuma configuração salva.{% endif %}</p>
+        </article>
+    </section>
+
+    <div class="ai-settings-layout">
+        <section class="panel record-form-panel">
+            <form method="post" novalidate id="smtp-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save">
+                {% if form.non_field_errors %}<div class="form-error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+                <h2 class="form-section-title">Servidor</h2>
+                <div class="form-grid">
+                    {% for field in form %}
+                        {% if field.name in "host port timeout" %}{% include "core/settings/_field.html" with wide=False %}{% endif %}
+                    {% endfor %}
+                </div>
+                <h2 class="form-section-title">Conta</h2>
+                <div class="form-grid">
+                    {% for field in form %}
+                        {% if field.name in "username smtp_password from_email" %}{% include "core/settings/_field.html" with wide=False %}{% endif %}
+                    {% endfor %}
+                </div>
+                <h2 class="form-section-title">Opções</h2>
+                <div class="toggle-list">
+                    {% for field in form %}
+                        {% if field.field.widget.input_type == "checkbox" %}
+                            <label class="toggle-row" for="{{ field.id_for_label }}">
+                                {{ field }}
+                                <span>
+                                    <strong>{{ field.label }}</strong>
+                                    <small>
+                                        {% if field.name == "use_tls" %}STARTTLS, normalmente na porta 587.
+                                        {% elif field.name == "use_ssl" %}Conexão SSL direta, normalmente na porta 465. Não ative junto com TLS.
+                                        {% else %}Desativada, o sistema volta a usar as variáveis de ambiente.{% endif %}
+                                    </small>
+                                </span>
+                            </label>
+                            {{ field.errors }}
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <div class="form-actions">
+                    <a class="button button-secondary" href="{% url 'admin-settings' %}">Cancelar</a>
+                    <button class="button" type="submit">Salvar configuração</button>
+                </div>
+            </form>
+        </section>
+
+        <aside class="ai-help">
+            <section class="panel ai-help-card">
+                <h2>Configurações comuns</h2>
+                <ul class="ai-provider-list">
+                    <li><strong>Gmail / Google Workspace</strong><span>smtp.gmail.com · 587 · TLS</span><button class="text-link row-action-button" type="button" data-smtp-preset="smtp.gmail.com" data-port="587" data-mode="tls">Preencher</button></li>
+                    <li><strong>Outlook / Microsoft 365</strong><span>smtp.office365.com · 587 · TLS</span><button class="text-link row-action-button" type="button" data-smtp-preset="smtp.office365.com" data-port="587" data-mode="tls">Preencher</button></li>
+                    <li><strong>Hostinger / Locaweb e outros</strong><span>Confira no painel do provedor (porta 465 com SSL ou 587 com TLS)</span></li>
+                </ul>
+                <p class="helptext">Gmail e Outlook com verificação em duas etapas exigem uma <strong>senha de app</strong>, não a senha normal da conta.</p>
+            </section>
+            {% if config %}
+                <form method="post" action="{% url 'email-settings-remove' %}" class="ai-disconnect" onsubmit="return confirm('Remover a configuração SMTP e apagar a senha do banco?');">
+                    {% csrf_token %}
+                    <button class="text-link text-danger row-action-button" type="submit">Remover configuração e apagar a senha</button>
+                </form>
+            {% endif %}
+        </aside>
+    </div>
+
+    <script>
+        (() => {
+            const tls = document.getElementById("id_use_tls");
+            const ssl = document.getElementById("id_use_ssl");
+            tls.addEventListener("change", () => { if (tls.checked) ssl.checked = false; });
+            ssl.addEventListener("change", () => { if (ssl.checked) tls.checked = false; });
+            document.querySelectorAll("[data-smtp-preset]").forEach((button) => {
+                button.addEventListener("click", () => {
+                    document.getElementById("id_host").value = button.dataset.smtpPreset;
+                    document.getElementById("id_port").value = button.dataset.port;
+                    tls.checked = button.dataset.mode === "tls";
+                    ssl.checked = button.dataset.mode === "ssl";
+                    document.getElementById("id_username").focus();
+                });
+            });
+        })();
+    </script>
+{% endblock %}

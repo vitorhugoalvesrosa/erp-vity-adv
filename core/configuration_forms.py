@@ -129,6 +129,48 @@ class CompanyVisualIdentityForm(CompanyProfileForm):
         )
 
 
+class CompanyDataForm(forms.ModelForm):
+    """Dados cadastrais da empresa (o logo e as cores ficam em Identidade visual)."""
+
+    cnpj = forms.CharField(
+        label="CNPJ",
+        max_length=18,
+        help_text="Com ou sem pontuação; aceita o novo padrão alfanumérico.",
+    )
+
+    class Meta:
+        model = CompanyProfile
+        fields = (
+            "legal_name",
+            "trade_name",
+            "cnpj",
+            "tax_regime",
+            "cnae",
+            "municipal_registration",
+            "state_registration",
+            "postal_code",
+            "street",
+            "street_number",
+            "address_complement",
+            "neighborhood",
+            "city",
+            "state",
+            "phone",
+            "email",
+        )
+        widgets = {
+            "postal_code": forms.TextInput(attrs={"inputmode": "numeric", "autocomplete": "postal-code"}),
+            "phone": forms.TextInput(attrs={"inputmode": "tel", "autocomplete": "tel"}),
+            "state": forms.TextInput(attrs={"maxlength": 2, "style": "text-transform: uppercase"}),
+        }
+
+    def clean_cnpj(self):
+        return re.sub(r"[\s./-]", "", self.cleaned_data["cnpj"]).upper()
+
+    def clean_state(self):
+        return (self.cleaned_data.get("state") or "").upper()
+
+
 class SMTPConfigurationForm(forms.ModelForm):
     smtp_password = forms.CharField(
         label="Senha SMTP",

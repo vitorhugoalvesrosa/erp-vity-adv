@@ -995,7 +995,8 @@ class FrontendPermissionTests(TestCase):
         self.assertIn("Django Admin", content)
         self.assertIn("Dados da empresa", content)
         self.assertIn("Certificado A1", content)
-        self.assertIn("Configuração SMTP", content)
+        self.assertIn("E-mail (SMTP)", content)
+        self.assertIn("/administracao/email/", content)
         self.assertIn("Operação do PDV", content)
 
     def test_only_superusers_can_open_django_admin(self):

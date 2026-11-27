@@ -84,11 +84,11 @@
         <article class="panel admin-card">
             <span class="admin-card-icon tone-violet"><svg class="icon" aria-hidden="true"><use href="#icon-building"></use></svg></span>
             <h2>Empresa e integrações</h2>
-            <p>Cadastre os dados da empresa, o certificado A1 e o SMTP autenticado.</p>
+            <p>Cadastre os dados da empresa, o certificado A1 e o e-mail usado pelo sistema.</p>
             <div class="admin-card-links">
-                <a class="text-link" href="{% url 'admin:core_companyprofile_changelist' %}">Dados da empresa</a>
-                <a class="text-link" href="{% url 'admin:core_a1certificate_changelist' %}">Certificado A1</a>
-                <a class="text-link" href="{% url 'admin:core_smtpconfiguration_changelist' %}">Configuração SMTP</a>
+                <a class="text-link" href="{% url 'company-data' %}">Dados da empresa</a>
+                <a class="text-link" href="{% url 'certificate-settings' %}">Certificado A1</a>
+                <a class="text-link" href="{% url 'email-settings' %}">E-mail (SMTP)</a>
             </div>
         </article>
 

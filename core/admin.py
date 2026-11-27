@@ -1,8 +1,4 @@
-import smtplib
-
 from django.contrib import admin, messages
-from django.core.exceptions import ImproperlyConfigured
-from django.core.mail import get_connection
 
 from core.admin_site import erp_admin_site
 from core.configuration_forms import (
@@ -10,8 +6,8 @@ from core.configuration_forms import (
     CompanyProfileForm,
     SMTPConfigurationForm,
 )
+from core.email_config import test_smtp_configuration
 from core.models import A1Certificate, CompanyProfile, SMTPConfiguration
-from core.secure_storage import decrypt_text
 
 
 @admin.register(CompanyProfile, site=erp_admin_site)
@@ -78,63 +74,10 @@ class CompanyProfileAdmin(admin.ModelAdmin):
 @admin.action(description="Testar autenticação SMTP")
 def test_smtp_connection(modeladmin, request, queryset):
     if queryset.count() != 1:
-        modeladmin.message_user(
-            request,
-            "Selecione uma única configuração SMTP.",
-            level=messages.ERROR,
-        )
+        modeladmin.message_user(request, "Selecione uma única configuração SMTP.", level=messages.ERROR)
         return
-
-    configuration = queryset.first()
-    if not configuration.password_encrypted:
-        modeladmin.message_user(
-            request,
-            "SMTP incompleto. Configure servidor, usuário, senha e remetente.",
-            level=messages.ERROR,
-        )
-        return
-
-    try:
-        password = decrypt_text(configuration.password_encrypted)
-    except ImproperlyConfigured as exc:
-        modeladmin.message_user(
-            request,
-            str(exc),
-            level=messages.ERROR,
-        )
-        return
-    connection = get_connection(
-        backend="django.core.mail.backends.smtp.EmailBackend",
-        host=configuration.host,
-        port=configuration.port,
-        username=configuration.username,
-        password=password,
-        use_tls=configuration.use_tls,
-        use_ssl=configuration.use_ssl,
-        timeout=configuration.timeout,
-    )
-    try:
-        opened = connection.open()
-    except (OSError, smtplib.SMTPException) as exc:
-        modeladmin.message_user(
-            request,
-            f"Falha ao autenticar no servidor SMTP: {exc}",
-            level=messages.ERROR,
-        )
-    else:
-        if opened:
-            connection.close()
-            modeladmin.message_user(
-                request,
-                "Autenticação SMTP concluída com sucesso.",
-                level=messages.SUCCESS,
-            )
-        else:
-            modeladmin.message_user(
-                request,
-                "Não foi possível abrir a conexão SMTP.",
-                level=messages.ERROR,
-            )
+    ok, detail = test_smtp_configuration(queryset.first())
+    modeladmin.message_user(request, detail, level=messages.SUCCESS if ok else messages.ERROR)
 
 
 @admin.register(SMTPConfiguration, site=erp_admin_site)

@@ -1,6 +1,9 @@
+import smtplib
 from dataclasses import dataclass
 
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
+from django.core.mail import get_connection
 
 from core.models import SMTPConfiguration
 from core.secure_storage import decrypt_text
@@ -56,3 +59,31 @@ def get_smtp_settings():
         use_ssl=settings.EMAIL_USE_SSL,
         timeout=settings.EMAIL_TIMEOUT,
     )
+
+
+def test_smtp_configuration(configuration):
+    """Abre e fecha uma conexão autenticada. Retorna (ok, mensagem)."""
+    if not configuration.password_encrypted:
+        return False, "SMTP incompleto. Configure servidor, usuário, senha e remetente."
+    try:
+        password = decrypt_text(configuration.password_encrypted)
+    except ImproperlyConfigured as exc:
+        return False, str(exc)
+    connection = get_connection(
+        backend="django.core.mail.backends.smtp.EmailBackend",
+        host=configuration.host,
+        port=configuration.port,
+        username=configuration.username,
+        password=password,
+        use_tls=configuration.use_tls,
+        use_ssl=configuration.use_ssl,
+        timeout=configuration.timeout,
+    )
+    try:
+        opened = connection.open()
+    except (OSError, smtplib.SMTPException) as exc:
+        return False, f"Falha ao autenticar no servidor SMTP: {exc}"
+    if not opened:
+        return False, "Não foi possível abrir a conexão SMTP."
+    connection.close()
+    return True, "Autenticação SMTP concluída com sucesso."
