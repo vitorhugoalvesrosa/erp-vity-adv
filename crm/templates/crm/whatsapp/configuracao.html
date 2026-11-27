@@ -1,0 +1,180 @@
+{% extends "core/base.html" %}
+{% load humanize %}
+
+{% block content %}
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Administração</p>
+            <h1>WhatsApp</h1>
+            <p>Conecte o número do escritório pela WhatsApp Cloud API da Meta. As mensagens que chegarem aparecem em Atendimento WhatsApp, e o bot faz o primeiro contato.</p>
+        </div>
+        <div class="page-heading-actions">
+            <a class="button button-secondary" href="{% url 'admin-settings' %}">Voltar à administração</a>
+            <a class="button" href="{% url 'whatsapp-inbox' %}">Abrir atendimento</a>
+        </div>
+    </header>
+
+    <section class="ai-status-grid" aria-label="Situação da conexão">
+        <article class="panel ai-status-card">
+            <span class="ai-status-label">Conexão</span>
+            {% if not config %}
+                <span class="badge badge-neutral">Não conectado</span>
+                <p>Siga o passo a passo e preencha o formulário abaixo.</p>
+            {% elif not config.is_active %}
+                <span class="badge badge-warning">Desativado</span>
+                <p>{{ config }}</p>
+            {% elif config.last_test_at and config.last_test_ok %}
+                <span class="badge badge-success">Conectado</span>
+                <p>{{ config.display_phone_number }}{% if config.verified_name %} · {{ config.verified_name }}{% endif %}</p>
+            {% elif config.last_test_at %}
+                <span class="badge badge-danger">Falha no teste</span>
+                <p>{{ config.last_test_message }}</p>
+            {% else %}
+                <span class="badge badge-info">Salvo, não testado</span>
+                <p>Número {{ config.phone_number_id }}</p>
+            {% endif %}
+            {% if config and config.has_access_token %}
+                <form method="post" class="ai-status-action">
+                    {% csrf_token %}
+                    <button class="button button-secondary" type="submit" name="action" value="test">Testar conexão</button>
+                </form>
+            {% endif %}
+        </article>
+        <article class="panel ai-status-card">
+            <span class="ai-status-label">Bot</span>
+            {% if config and not config.bot_enabled %}
+                <span class="badge badge-neutral">Desligado</span>
+                <p>A equipe responde todas as mensagens.</p>
+            {% elif ia_ligada %}
+                <span class="badge badge-success">Com IA</span>
+                <p>Conversa, coleta os dados e passa para a equipe.</p>
+            {% else %}
+                <span class="badge badge-info">Só boas-vindas</span>
+                <p>{% if user.is_superuser %}Para o bot conversar, ligue “Atendimento inicial no WhatsApp” em <a class="text-link" href="{% url 'ai-settings' %}">Inteligência artificial</a>.{% endif %}</p>
+            {% endif %}
+        </article>
+        <article class="panel ai-status-card">
+            <span class="ai-status-label">Este mês</span>
+            <strong class="ai-status-value num">{{ no_mes.recebidas|intcomma }} <small>recebidas</small></strong>
+            <p>{{ no_mes.enviadas|intcomma }} enviadas ({{ no_mes.pelo_bot|intcomma }} pelo bot){% if no_mes.falhas %} · {{ no_mes.falhas }} com falha{% endif %} · {{ conversas_abertas }} conversa{{ conversas_abertas|pluralize }} aberta{{ conversas_abertas|pluralize }}.</p>
+        </article>
+    </section>
+
+    <section class="panel wa-webhook-panel">
+        <div class="panel-header"><div><h2>Dados para o painel da Meta</h2><p>WhatsApp → Configuração → Webhook. Assine o campo <code>messages</code>.</p></div></div>
+        <dl class="wa-copy-list">
+            <div>
+                <dt>URL de retorno (callback)</dt>
+                <dd><code data-copy-value>{{ webhook_url }}</code><button class="text-link row-action-button" type="button" data-copy>Copiar</button></dd>
+            </div>
+            <div>
+                <dt>Token de verificação</dt>
+                <dd>
+                    {% if config %}
+                        <code data-copy-value>{{ config.verify_token }}</code><button class="text-link row-action-button" type="button" data-copy>Copiar</button>
+                    {% else %}
+                        <span class="helptext">Gerado ao salvar a conexão.</span>
+                    {% endif %}
+                </dd>
+            </div>
+        </dl>
+        {% if config %}
+            <form method="post" class="wa-token-reset">
+                {% csrf_token %}
+                <button class="text-link row-action-button" type="submit" name="action" value="novo_token">Gerar novo token de verificação</button>
+            </form>
+        {% endif %}
+    </section>
+
+    <div class="ai-settings-layout">
+        <section class="panel record-form-panel">
+            <form method="post" novalidate>
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save">
+                {% if form.non_field_errors %}<div class="form-error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+                <h2 class="form-section-title">Número e credenciais</h2>
+                <div class="form-grid">
+                    {% for field in form %}
+                        {% if field.name in "phone_number_id business_account_id access_token app_secret" %}
+                            <div class="form-field{% if field.name == 'access_token' or field.name == 'app_secret' %} is-wide{% endif %}">
+                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {{ field.errors }}
+                                {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                <h2 class="form-section-title">Funcionamento</h2>
+                <div class="toggle-list">
+                    {% for field in form %}
+                        {% if field.field.widget.input_type == "checkbox" %}
+                            <label class="toggle-row" for="{{ field.id_for_label }}">
+                                {{ field }}
+                                <span>
+                                    <strong>{{ field.label }}</strong>
+                                    <small>{% if field.name == "is_active" %}Recebe e envia mensagens por este número.{% else %}Responde automaticamente até a equipe assumir. Desligado, todas as mensagens vão direto para a fila da equipe.{% endif %}</small>
+                                </span>
+                            </label>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                <h2 class="form-section-title">Bot de atendimento</h2>
+                <div class="form-grid">
+                    {% for field in form %}
+                        {% if field.name in "bot_instructions welcome_message handoff_message handoff_keywords" %}
+                            <div class="form-field is-wide">
+                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {{ field.errors }}
+                                {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                <div class="form-actions"><button class="button" type="submit">Salvar conexão</button></div>
+            </form>
+        </section>
+
+        <aside class="ai-help">
+            <section class="panel ai-help-card">
+                <h2>Passo a passo na Meta</h2>
+                <ol class="wa-steps">
+                    <li>Em <strong>developers.facebook.com</strong>, crie um app do tipo <em>Empresa</em> e adicione o produto <strong>WhatsApp</strong>.</li>
+                    <li>Em <em>WhatsApp → Configuração da API</em>, adicione o número do escritório e copie o <strong>ID do número de telefone</strong> e o <strong>ID da conta do WhatsApp Business</strong>.</li>
+                    <li>No <em>Gerenciador de Negócios → Usuários do sistema</em>, crie um usuário administrador, atribua o app e gere um <strong>token permanente</strong> com <code>whatsapp_business_messaging</code> e <code>whatsapp_business_management</code>.</li>
+                    <li>Em <em>Configurações do app → Básico</em>, copie a <strong>chave secreta do app</strong>.</li>
+                    <li>Salve aqui, depois cole a URL e o token de verificação acima em <em>WhatsApp → Configuração → Webhook</em> e assine <code>messages</code>.</li>
+                    <li>Clique em <strong>Testar conexão</strong> e mande um “oi” para o número.</li>
+                </ol>
+                <p class="helptext">O número usado na Cloud API sai do aplicativo WhatsApp do celular. O token temporário do painel expira em 24 h: use o token do usuário do sistema.</p>
+            </section>
+            <section class="admin-note">
+                <svg class="nav-icon" aria-hidden="true"><use href="#icon-shield"></use></svg>
+                <p><strong>Segurança e LGPD</strong> — o token e a chave secreta são criptografados com <code>CONFIG_ENCRYPTION_KEY</code>. O ERP rejeita eventos sem a assinatura da Meta. As conversas ficam no banco do ERP; com a IA ligada, o histórico recente da conversa é enviado ao provedor de IA para gerar a resposta.</p>
+            </section>
+            {% if config %}
+                <form method="post" action="{% url 'whatsapp-settings-remove' %}" class="ai-disconnect" onsubmit="return confirm('Desconectar o WhatsApp e apagar o token do banco? As conversas continuam salvas.');">
+                    {% csrf_token %}
+                    <button class="text-link text-danger row-action-button" type="submit">Desconectar e apagar credenciais</button>
+                </form>
+            {% endif %}
+        </aside>
+    </div>
+
+    <script>
+        document.querySelectorAll("[data-copy]").forEach((button) => {
+            button.addEventListener("click", async () => {
+                const value = button.parentElement.querySelector("[data-copy-value]").textContent.trim();
+                try {
+                    await navigator.clipboard.writeText(value);
+                    button.textContent = "Copiado";
+                    window.setTimeout(() => { button.textContent = "Copiar"; }, 1600);
+                } catch (error) {}
+            });
+        });
+    </script>
+{% endblock %}

@@ -1,3 +1,6 @@
+import hashlib
+import hmac
+import json
 from datetime import date
 from decimal import Decimal
 
@@ -89,10 +92,10 @@ class CrmWhatsAppTests(TestCase):
         self.assertGreaterEqual(conta.score_lead, 70)
         self.assertTrue(conta.qualificacao["urgencia"])
 
+    @override_settings(WHATSAPP_APP_SECRET="0123456789abcdef0123456789abcdef")
     def test_webhook_recebe_mensagem_e_registra_conversa(self):
-        response = self.client.post(
-            reverse("crm-whatsapp-webhook"),
-            data={
+        body = json.dumps(
+            {
                 "entry": [
                     {
                         "changes": [
@@ -110,8 +113,14 @@ class CrmWhatsAppTests(TestCase):
                         ]
                     }
                 ]
-            },
+            }
+        ).encode()
+        signature = hmac.new(b"0123456789abcdef0123456789abcdef", body, hashlib.sha256).hexdigest()
+        response = self.client.post(
+            reverse("crm-whatsapp-webhook"),
+            data=body,
             content_type="application/json",
+            HTTP_X_HUB_SIGNATURE_256=f"sha256={signature}",
         )
 
         self.assertEqual(response.status_code, 200)

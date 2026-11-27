@@ -1,0 +1,220 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+    <header class="page-heading wa-heading">
+        <div>
+            <p class="eyebrow">CRM e vendas</p>
+            <h1>Atendimento WhatsApp</h1>
+            <p>Tudo que chega no número do escritório aparece aqui. O bot faz o primeiro atendimento e a equipe assume quando precisar.</p>
+        </div>
+        <div class="page-heading-actions">
+            {% if user.is_superuser %}<a class="button button-secondary" href="{% url 'whatsapp-settings' %}">Configurar</a>{% endif %}
+            {% if pode_iniciar and pode_atender %}
+                <a class="button" href="{% url 'whatsapp-nova' %}"><svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg> Nova conversa</a>
+            {% endif %}
+        </div>
+    </header>
+
+    {% if not configurado %}
+        <aside class="admin-note wa-setup-note">
+            <svg class="nav-icon" aria-hidden="true"><use href="#icon-alert"></use></svg>
+            <p><strong>Número não conectado</strong> — o ERP ainda não recebe nem envia mensagens. {% if user.is_superuser %}Conecte o número em <a class="text-link" href="{% url 'whatsapp-settings' %}">Administração → WhatsApp</a>.{% else %}Peça a um administrador para conectar o número do WhatsApp.{% endif %}</p>
+        </aside>
+    {% endif %}
+
+    <section class="wa-inbox{% if conversa %} has-conversa{% endif %}" data-inbox data-total-unread="{{ total_nao_lidas }}">
+        <aside class="wa-sidebar" aria-label="Conversas">
+            <form class="wa-search" method="get" action="{% url 'whatsapp-inbox' %}" role="search">
+                <svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg>
+                <input class="form-control" type="search" name="q" value="{{ busca }}" placeholder="Buscar por nome ou número" aria-label="Buscar conversas">
+                <input type="hidden" name="f" value="{{ filtro }}">
+            </form>
+            <nav class="wa-filters" aria-label="Filtrar conversas">
+                {% for valor, rotulo in filtros %}
+                    <a class="chip{% if filtro == valor %} is-active{% endif %}" href="?f={{ valor }}{% if busca %}&amp;q={{ busca|urlencode }}{% endif %}"{% if filtro == valor %} aria-current="true"{% endif %}>{{ rotulo }}</a>
+                {% endfor %}
+            </nav>
+            <div class="wa-list" id="wa-list" data-url="{% url 'whatsapp-lista' %}?f={{ filtro }}&amp;q={{ busca|urlencode }}{% if conversa %}&amp;c={{ conversa.pk }}{% endif %}" aria-live="polite">
+                {% include "crm/whatsapp/_lista.html" %}
+            </div>
+        </aside>
+
+        <section class="wa-chat" aria-label="Conversa">
+            {% if conversa %}
+                <div id="wa-header">{% include "crm/whatsapp/_cabecalho.html" %}</div>
+                <div class="wa-log" id="wa-log" data-updates-url="{% url 'whatsapp-atualizacoes' pk=conversa.pk %}" data-window-open="{{ conversa.janela_aberta|yesno:'1,0' }}" aria-live="polite">
+                    {% for mensagem in mensagens %}
+                        {% include "crm/whatsapp/_mensagem.html" %}
+                    {% empty %}
+                        <p class="wa-log-empty" data-empty>Nenhuma mensagem nesta conversa ainda.</p>
+                    {% endfor %}
+                </div>
+
+                {% if not pode_atender %}
+                    <p class="wa-readonly">Seu perfil pode acompanhar as conversas, mas não responder.</p>
+                {% elif conversa.janela_aberta %}
+                    <form class="wa-composer" id="wa-composer" method="post" action="{% url 'whatsapp-enviar' pk=conversa.pk %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="wa-composer-error message error" role="alert" data-composer-error hidden></div>
+                        <div class="wa-attachment" data-attachment hidden>
+                            <svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg>
+                            <span data-attachment-name></span>
+                            <button type="button" class="text-link" data-attachment-clear>Remover</button>
+                        </div>
+                        <div class="wa-composer-row">
+                            <label class="icon-button wa-attach" title="Anexar arquivo">
+                                <svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg>
+                                <span class="visually-hidden">Anexar arquivo</span>
+                                <input type="file" name="arquivo" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.mp3,.ogg,.mp4" data-file hidden>
+                            </label>
+                            <textarea class="form-control" name="texto" rows="1" maxlength="4096" placeholder="Escreva uma mensagem" aria-label="Mensagem" data-text></textarea>
+                            <button class="button" type="submit" data-send>Enviar</button>
+                        </div>
+                        <p class="wa-composer-hint">
+                            Enter envia, Shift+Enter quebra a linha.
+                            {% if conversa.bot_ativo %}Ao responder, você assume a conversa e o bot para.{% endif %}
+                            Janela de 24 h aberta até <span class="num">{{ conversa.janela_expira_em|date:"d/m H:i" }}</span>.
+                        </p>
+                    </form>
+                {% else %}
+                    <form class="wa-window-closed" method="post" action="{% url 'whatsapp-modelo' pk=conversa.pk %}">
+                        {% csrf_token %}
+                        <p><strong>Janela de 24 h fechada.</strong> Pelas regras do WhatsApp, depois de 24 h sem mensagem do cliente só é possível enviar um modelo aprovado pela Meta. Quando ele responder, a conversa volta a ficar livre.</p>
+                        {% include "crm/whatsapp/_modelo_campos.html" %}
+                        <div class="form-actions"><button class="button" type="submit">Enviar modelo</button></div>
+                    </form>
+                {% endif %}
+            {% else %}
+                <div class="wa-chat-empty">
+                    <span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#icon-chat"></use></svg></span>
+                    <strong>Selecione uma conversa</strong>
+                    <p>Escolha um contato na lista ou inicie uma nova conversa.</p>
+                </div>
+            {% endif %}
+        </section>
+    </section>
+
+    {% include "crm/whatsapp/_modelo_script.html" %}
+    <script>
+        (() => {
+            const inbox = document.querySelector("[data-inbox]");
+            const list = document.getElementById("wa-list");
+            const log = document.getElementById("wa-log");
+            const header = document.getElementById("wa-header");
+            const baseTitle = document.title.replace(/^\(\d+\)\s*/, "");
+            const setUnread = (total) => {
+                document.title = total > 0 ? `(${total}) ${baseTitle}` : baseTitle;
+                const badge = document.querySelector("[data-whatsapp-unread]");
+                if (badge) { badge.textContent = total; badge.hidden = !total; }
+            };
+            setUnread(Number(inbox.dataset.totalUnread || 0));
+
+            const scrollToEnd = () => { if (log) log.scrollTop = log.scrollHeight; };
+            const nearEnd = () => !log || log.scrollHeight - log.scrollTop - log.clientHeight < 120;
+            const lastId = () => {
+                const items = log ? log.querySelectorAll(".wa-msg[data-id]") : [];
+                return items.length ? items[items.length - 1].dataset.id : 0;
+            };
+            const append = (message) => {
+                if (!log || log.querySelector(`.wa-msg[data-id="${message.id}"]`)) return;
+                log.querySelector("[data-empty]")?.remove();
+                const follow = nearEnd();
+                log.insertAdjacentHTML("beforeend", message.html);
+                if (follow) scrollToEnd();
+            };
+            scrollToEnd();
+
+            let polling = false;
+            const poll = async () => {
+                if (polling || document.hidden) return;
+                polling = true;
+                try {
+                    const listResponse = await fetch(list.dataset.url, { headers: { "X-Requested-With": "fetch" } });
+                    if (listResponse.ok) {
+                        const data = await listResponse.json();
+                        if (list.innerHTML !== data.html) list.innerHTML = data.html;
+                        setUnread(data.nao_lidas);
+                    }
+                    if (log) {
+                        const url = `${log.dataset.updatesUrl}?apos=${lastId()}`;
+                        const response = await fetch(url, { headers: { "X-Requested-With": "fetch" } });
+                        if (response.ok) {
+                            const data = await response.json();
+                            if ((data.janela_aberta ? "1" : "0") !== log.dataset.windowOpen) { window.location.reload(); return; }
+                            data.mensagens.forEach(append);
+                            Object.entries(data.status).forEach(([id, info]) => {
+                                const item = log.querySelector(`.wa-msg[data-id="${id}"]`);
+                                if (!item || item.dataset.status === info.status) return;
+                                item.dataset.status = info.status;
+                                const error = item.querySelector("[data-error]");
+                                if (error) { error.textContent = info.erro; error.hidden = !info.erro; }
+                            });
+                            const temp = document.createElement("div");
+                            temp.innerHTML = data.cabecalho;
+                            if (header.innerHTML.trim() !== temp.innerHTML.trim()) header.innerHTML = data.cabecalho;
+                        }
+                    }
+                } catch (error) {
+                    // Sem conexão: tenta de novo no próximo ciclo.
+                } finally {
+                    polling = false;
+                }
+            };
+            window.setInterval(poll, 4000);
+            document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+
+            const composer = document.getElementById("wa-composer");
+            if (!composer) return;
+            const text = composer.querySelector("[data-text]");
+            const file = composer.querySelector("[data-file]");
+            const send = composer.querySelector("[data-send]");
+            const errorBox = composer.querySelector("[data-composer-error]");
+            const attachment = composer.querySelector("[data-attachment]");
+            const resize = () => { text.style.height = "auto"; text.style.height = `${Math.min(text.scrollHeight, 180)}px`; };
+            const clearFile = () => { file.value = ""; attachment.hidden = true; text.placeholder = "Escreva uma mensagem"; };
+            text.addEventListener("input", resize);
+            text.addEventListener("keydown", (event) => {
+                if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+                    event.preventDefault();
+                    composer.requestSubmit();
+                }
+            });
+            file.addEventListener("change", () => {
+                const chosen = file.files[0];
+                attachment.hidden = !chosen;
+                composer.querySelector("[data-attachment-name]").textContent = chosen ? chosen.name : "";
+                text.placeholder = chosen ? "Legenda (opcional)" : "Escreva uma mensagem";
+            });
+            composer.querySelector("[data-attachment-clear]").addEventListener("click", clearFile);
+            composer.addEventListener("submit", async (event) => {
+                event.preventDefault();
+                if (!text.value.trim() && !file.files.length) return;
+                send.disabled = true;
+                send.classList.add("is-loading");
+                errorBox.hidden = true;
+                try {
+                    const response = await fetch(composer.action, {
+                        method: "POST",
+                        headers: { "X-Requested-With": "fetch" },
+                        body: new FormData(composer),
+                    });
+                    const data = await response.json();
+                    if (data.mensagem) append(data.mensagem);
+                    if (!response.ok) throw new Error(data.erro || "Não foi possível enviar a mensagem.");
+                    text.value = "";
+                    clearFile();
+                    resize();
+                    scrollToEnd();
+                    poll();
+                } catch (error) {
+                    errorBox.textContent = error.message || "Não foi possível enviar a mensagem.";
+                    errorBox.hidden = false;
+                } finally {
+                    send.disabled = false;
+                    send.classList.remove("is-loading");
+                    text.focus();
+                }
+            });
+        })();
+    </script>
+{% endblock %}

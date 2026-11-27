@@ -42,6 +42,7 @@
         <symbol id="icon-alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4m0 3h.01"/></symbol>
         <symbol id="icon-inbox" viewBox="0 0 24 24"><path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5 5h14l2 8v6H3v-6l2-8Z"/></symbol>
         <symbol id="icon-check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+        <symbol id="icon-phone-chat" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3Z"/><path d="M9 8.5c0 3.5 2.5 6.5 6.5 6.5l1-1.6-2-1-1 .9c-1-.4-2-1.4-2.4-2.4l.9-1-1-2L9.5 8"/></symbol>
         <symbol id="icon-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4V5Z"/><path d="M8 9h8M8 12h5"/></symbol>
         <symbol id="icon-pen" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></symbol>
         <symbol id="icon-clock" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></symbol>
@@ -122,11 +123,17 @@
                 </nav>
             {% endif %}
 
-            {% if perms.crm.view_conta or perms.crm.view_proposta %}
+            {% if perms.crm.view_conta or perms.crm.view_proposta or perms.crm.view_conversawhatsapp %}
                 <button class="nav-label nav-group-toggle" type="button" data-menu-group="crm" aria-expanded="true" aria-controls="nav-crm">
                     <span>CRM e vendas</span><span class="nav-group-indicator" aria-hidden="true"><svg class="icon"><use href="#icon-chevron-down"></use></svg></span>
                 </button>
                 <nav class="sidebar-nav" id="nav-crm" aria-label="CRM e vendas">
+                    {% if perms.crm.view_conversawhatsapp %}
+                        <a class="nav-link {% if active_module == 'whatsapp' %}is-active{% endif %}" href="{% url 'whatsapp-inbox' %}">
+                            <svg class="nav-icon" aria-hidden="true"><use href="#icon-phone-chat"></use></svg> Atendimento WhatsApp
+                            <span class="nav-count num" data-whatsapp-unread{% if not whatsapp_nao_lidas %} hidden{% endif %} aria-label="mensagens não lidas">{{ whatsapp_nao_lidas|default:0 }}</span>
+                        </a>
+                    {% endif %}
                     {% if perms.crm.view_conta %}
                         <a class="nav-link {% if active_module == 'contas' %}is-active{% endif %}" href="{% url 'record-list' module='contas' %}">
                             <svg class="nav-icon" aria-hidden="true"><use href="#icon-clients"></use></svg> Contas e clientes

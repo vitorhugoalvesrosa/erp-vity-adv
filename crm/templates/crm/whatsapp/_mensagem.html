@@ -1,0 +1,31 @@
+<article class="wa-msg wa-msg-{{ mensagem.direcao }}" data-id="{{ mensagem.pk }}" data-status="{{ mensagem.status }}">
+    <div class="wa-bubble{% if mensagem.tipo == 'reaction' %} is-reaction{% endif %}">
+        {% if mensagem.tipo == "template" %}<span class="wa-tag">Modelo aprovado</span>{% endif %}
+        {% if mensagem.tem_midia %}
+            {% url 'whatsapp-midia' pk=mensagem.pk as midia_url %}
+            {% if mensagem.e_imagem %}
+                <a class="wa-media" href="{{ midia_url }}" target="_blank" rel="noopener"><img src="{{ midia_url }}" alt="{% if mensagem.tipo == 'sticker' %}Figurinha{% else %}Imagem{% endif %} enviada pelo WhatsApp" loading="lazy"></a>
+            {% elif mensagem.tipo == "audio" %}
+                <audio class="wa-audio" controls preload="none" src="{{ midia_url }}"></audio>
+            {% elif mensagem.tipo == "video" %}
+                <video class="wa-video" controls preload="none" src="{{ midia_url }}"></video>
+            {% else %}
+                <a class="wa-file" href="{{ midia_url }}">
+                    <svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg>
+                    <span>{{ mensagem.midia_nome|default:"Documento" }}</span>
+                </a>
+            {% endif %}
+        {% elif mensagem.tipo in "image audio video document sticker" and mensagem.direcao == "saida" %}
+            <span class="wa-file is-pending">{{ mensagem.midia_nome|default:"Arquivo" }}</span>
+        {% endif %}
+        {% if mensagem.texto %}<p class="wa-text">{{ mensagem.texto|urlize|linebreaksbr }}</p>{% endif %}
+        <footer class="wa-meta">
+            {% if mensagem.direcao == "saida" %}
+                <span>{% if mensagem.gerada_por_ia %}Bot{% elif mensagem.enviada_por %}{{ mensagem.enviada_por.get_full_name|default:mensagem.enviada_por.username }}{% endif %}</span>
+            {% endif %}
+            <time class="num" datetime="{{ mensagem.criada_em|date:'c' }}">{{ mensagem.criada_em|date:"d/m H:i" }}</time>
+            {% if mensagem.direcao == "saida" %}<span class="wa-ticks" data-ticks aria-label="{{ mensagem.get_status_display }}" title="{{ mensagem.get_status_display }}"></span>{% endif %}
+        </footer>
+        <p class="wa-error" data-error{% if not mensagem.erro %} hidden{% endif %}>{{ mensagem.erro }}</p>
+    </div>
+</article>

@@ -122,30 +122,28 @@ Os recursos oferecem operações de listagem, consulta por ID, criação, atuali
 
 Configure `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS` ou `FRONTEND_URL` no `.env` quando a aplicação for acessada por um frontend em outra origem.
 
-## WhatsApp, IA e CRM
+## Atendimento WhatsApp
 
-O sistema inclui uma base de atendimento comercial pelo WhatsApp:
+O ERP recebe e envia mensagens pelo número do escritório usando a **WhatsApp Cloud API** da Meta.
 
-- webhook para WhatsApp Cloud API da Meta;
-- criação ou reutilização automática de lead;
-- identificação de pessoa física ou jurídica pela mensagem;
-- score simples de qualificação comercial;
-- distribuição automática entre vendedores registrados em `Regras de distribuição de leads`;
-- histórico de conversas e mensagens;
-- follow-ups com responsável, canal, prazo e status;
-- resposta automática pela conta de IA conectada (ver "Inteligência artificial"), ou pelas variáveis abaixo como alternativa.
+**Configuração** (superusuário): **Administração → WhatsApp** (`/administracao/whatsapp/`). Informe o ID do número de telefone, o ID da conta do WhatsApp Business (opcional, para listar modelos), o token permanente de um usuário do sistema e a chave secreta do app. Token e chave são criptografados com `CONFIG_ENCRYPTION_KEY`. A tela mostra a URL do webhook e o token de verificação para colar no painel da Meta (assine o campo `messages`), e tem o botão **Testar conexão**. O número usado na Cloud API deixa de funcionar no aplicativo WhatsApp do celular.
 
-Configure no ambiente:
+**Caixa de entrada** (`/whatsapp/`, menu CRM e vendas → Atendimento WhatsApp):
 
-- `WHATSAPP_PHONE_ID`
-- `WHATSAPP_ACCESS_TOKEN`
-- `WHATSAPP_VERIFY_TOKEN`
-- `WHATSAPP_APP_SECRET`
-- `AI_API_URL`
-- `AI_API_KEY`
-- `AI_MODEL`
+- toda mensagem que chega cria ou reutiliza a conversa e o lead (com o nome do perfil do WhatsApp), distribui o lead entre os vendedores e atualiza o score;
+- a lista e a conversa se atualizam sozinhas a cada poucos segundos, com contador de não lidas no menu;
+- texto, imagens, áudios, vídeos, documentos, localização e contatos recebidos; envio de texto e de arquivos (PDF, Word, Excel, imagens, áudio, vídeo, até 16 MB);
+- status de envio (enviada, entregue, lida, falhou) e “visto” automático ao abrir a conversa;
+- filtros: abertas, não lidas, aguardando equipe, minhas, com o bot, encerradas;
+- ações: assumir, devolver ao bot, encerrar e reabrir.
 
-Endpoint do webhook: `POST /api/crm/whatsapp/webhook/`. O Meta usa `GET /api/crm/whatsapp/verify/` para validar o webhook.
+**Bot**: com a IA conectada e o recurso “Atendimento inicial no WhatsApp” ligado, o bot conversa usando o histórico recente, coleta nome, PF/PJ, assunto e urgência, e passa para a equipe quando o cliente pede ou quando já tem os dados. Sem IA, envia a mensagem de boas-vindas e coloca a conversa na fila da equipe. O cliente pode chamar um atendente pelas palavras configuradas (ex.: “atendente”). Quando alguém da equipe responde, o bot para de responder aquele contato; ao encerrar a conversa, ele volta a atender se o cliente escrever de novo.
+
+**Iniciar conversa** (`/whatsapp/nova/`): pelas regras da Meta, só é possível mandar texto livre até 24 h depois da última mensagem do cliente. Para chamar alguém pela primeira vez, ou depois desse prazo, envie um **modelo aprovado** no WhatsApp Manager, com as variáveis preenchidas.
+
+**Permissões**: ver conversas exige `crm.view_conversawhatsapp` (operador); responder exige `crm.change_conversawhatsapp` e iniciar exige `crm.add_conversawhatsapp` (gerente e administrador).
+
+Webhook: `GET`/`POST /api/crm/whatsapp/webhook/` (a mesma URL valida e recebe). Eventos sem a assinatura `X-Hub-Signature-256` válida são recusados. Como alternativa à tela de configuração, valem as variáveis `WHATSAPP_PHONE_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET` e `WHATSAPP_BUSINESS_ACCOUNT_ID`; `WHATSAPP_GRAPH_VERSION` define a versão da Graph API (padrão `v23.0`). As variáveis `AI_API_URL`, `AI_API_KEY` e `AI_MODEL` continuam aceitas como IA alternativa do bot.
 
 ## Inteligência artificial
 
@@ -162,7 +160,7 @@ Recursos (cada um pode ser ligado ou desligado na mesma tela):
 - **Publicações**: resumo em linguagem simples, classificação do ato, urgência, providência e prazo sugeridos; cria a tarefa sugerida com um clique. API: `POST /api/juridico/publicacoes/{id}/analisar-ia/`.
 - **Resumo do processo**: na ficha do processo (`/app/processos/{id}/ia/`), a partir de movimentações, prazos, tarefas, audiências e publicações.
 - **Assistente jurídico** (`/assistente/`): conversa com contexto opcional de um processo.
-- **Atendimento inicial no WhatsApp**: primeira resposta automática aos leads.
+- **Atendimento inicial no WhatsApp**: bot que conversa com os leads e passa para a equipe (ver "Atendimento WhatsApp").
 
 O **limite mensal de tokens** pausa a IA quando atingido. O ERP registra apenas o consumo (recurso, usuário, modelo e tokens), nunca o conteúdo enviado. Prazos sugeridos pela IA são estimativas: confira sempre a contagem em dias úteis.
 

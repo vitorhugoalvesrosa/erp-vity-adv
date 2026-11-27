@@ -42,6 +42,7 @@ urlpatterns = [
         name="password_reset_complete",
     ),
     path("admin/", erp_admin_site.urls),
+    path("", include("crm.web_urls")),
     path("", include("core.urls")),
     path("api/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),

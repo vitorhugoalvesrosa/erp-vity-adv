@@ -1,0 +1,76 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Atendimento WhatsApp</p>
+            <h1>Nova conversa</h1>
+            <p>Para chamar um contato pela primeira vez (ou depois de 24 h sem resposta dele), o WhatsApp exige um modelo de mensagem aprovado pela Meta.</p>
+        </div>
+        <a class="button button-secondary" href="{% url 'whatsapp-inbox' %}">Voltar às conversas</a>
+    </header>
+
+    {% if not configurado %}
+        <aside class="admin-note wa-setup-note">
+            <svg class="nav-icon" aria-hidden="true"><use href="#icon-alert"></use></svg>
+            <p><strong>Número não conectado</strong> — conecte o WhatsApp em Administração antes de iniciar conversas.</p>
+        </aside>
+    {% endif %}
+
+    <div class="ai-settings-layout">
+        <section class="panel record-form-panel">
+            <form method="post" novalidate>
+                {% csrf_token %}
+                {% if form.non_field_errors %}<div class="form-error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+                <h2 class="form-section-title">Contato</h2>
+                <div class="form-grid">
+                    {% for field in form %}
+                        <div class="form-field{% if field.name == 'conta' %} is-wide{% endif %}">
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {{ field.errors }}
+                            {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <h2 class="form-section-title">Primeira mensagem</h2>
+                {% include "crm/whatsapp/_modelo_campos.html" %}
+
+                <div class="form-actions">
+                    <button class="button" type="submit"{% if not configurado %} disabled{% endif %}>Enviar e abrir conversa</button>
+                </div>
+            </form>
+        </section>
+
+        <aside class="ai-help">
+            <section class="panel ai-help-card">
+                <h2>Como criar um modelo</h2>
+                <ol class="wa-steps">
+                    <li>No <strong>WhatsApp Manager</strong> da Meta, abra <em>Modelos de mensagem</em> → <em>Criar modelo</em>.</li>
+                    <li>Escolha a categoria <strong>Utilidade</strong> (avisos de atendimento) ou <strong>Marketing</strong>.</li>
+                    <li>Escreva o texto usando variáveis como <code>{% verbatim %}{{1}}{% endverbatim %}</code> para o nome do cliente.</li>
+                    <li>Depois de aprovado (geralmente em minutos), ele aparece na lista ao lado{% if not modelos %}, se o ID da conta do WhatsApp Business estiver configurado{% endif %}.</li>
+                </ol>
+                <p class="helptext">{% verbatim %}Exemplo: “Olá, {{1}}! Aqui é do escritório. Podemos falar sobre o seu atendimento?”{% endverbatim %}</p>
+            </section>
+        </aside>
+    </div>
+
+    {{ contas_telefones|json_script:"wa-contas" }}
+    {% include "crm/whatsapp/_modelo_script.html" %}
+    <script>
+        (() => {
+            const contas = JSON.parse(document.getElementById("wa-contas").textContent);
+            const conta = document.getElementById("id_conta");
+            const telefone = document.getElementById("id_telefone");
+            const nome = document.getElementById("id_nome");
+            conta.addEventListener("change", () => {
+                const item = contas[conta.value];
+                if (!item) return;
+                if (item.telefone && !telefone.value) telefone.value = item.telefone;
+                if (!nome.value) nome.value = item.nome;
+            });
+        })();
+    </script>
+{% endblock %}

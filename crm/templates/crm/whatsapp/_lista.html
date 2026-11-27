@@ -1,0 +1,27 @@
+{% for item in conversas %}
+    <a class="wa-item{% if conversa and item.pk == conversa.pk %} is-active{% endif %}{% if item.nao_lidas %} is-unread{% endif %}" href="{% url 'whatsapp-conversa' pk=item.pk %}{% if filtro != 'abertas' or busca %}?f={{ filtro }}&amp;q={{ busca|urlencode }}{% endif %}"{% if conversa and item.pk == conversa.pk %} aria-current="true"{% endif %}>
+        <span class="wa-avatar" aria-hidden="true">{{ item.nome_exibicao|slice:":1"|upper }}</span>
+        <span class="wa-item-body">
+            <span class="wa-item-top">
+                <strong>{{ item.nome_exibicao }}</strong>
+                {% if item.ultima_mensagem_em %}<time class="num" datetime="{{ item.ultima_mensagem_em|date:'c' }}">{{ item.ultima_mensagem_em|date:"d/m H:i" }}</time>{% endif %}
+            </span>
+            <span class="wa-item-bottom">
+                <span class="wa-preview">{{ item.ultima_mensagem_texto|default:"Sem mensagens" }}</span>
+                {% if item.nao_lidas %}<span class="wa-unread num" aria-label="{{ item.nao_lidas }} não lidas">{{ item.nao_lidas }}</span>{% endif %}
+            </span>
+            <span class="wa-item-tags">
+                {% if item.status == "encerrada" %}<span class="badge badge-neutral">Encerrada</span>
+                {% elif item.status == "aguardando_vendedor" %}<span class="badge badge-warning">Aguardando equipe</span>
+                {% elif item.bot_ativo %}<span class="badge badge-info">Bot</span>
+                {% endif %}
+                {% if item.atendente %}<span class="wa-agent">{{ item.atendente.get_full_name|default:item.atendente.username }}</span>{% endif %}
+            </span>
+        </span>
+    </a>
+{% empty %}
+    <div class="wa-list-empty">
+        <strong>{% if busca %}Nada encontrado{% else %}Nenhuma conversa aqui{% endif %}</strong>
+        <p>{% if busca %}Confira o nome ou o número buscado.{% else %}As mensagens que chegarem no número aparecem nesta lista.{% endif %}</p>
+    </div>
+{% endfor %}

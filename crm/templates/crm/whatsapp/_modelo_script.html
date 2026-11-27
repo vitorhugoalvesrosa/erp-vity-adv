@@ -1,0 +1,34 @@
+{% verbatim %}<script>
+    document.querySelectorAll("[data-template-picker]").forEach((picker) => {
+        const select = picker.querySelector("[data-template-select]");
+        const name = picker.querySelector("[data-template-name]");
+        const language = picker.querySelector("[data-template-language]");
+        const body = picker.querySelector("[data-template-body]");
+        const paramsField = picker.querySelector("[data-template-params]");
+        const params = paramsField.querySelector("textarea");
+        const help = picker.querySelector("[data-template-help]");
+        const preview = picker.querySelector("[data-template-preview]");
+        const render = () => {
+            const option = select ? select.selectedOptions[0] : null;
+            const text = option ? option.dataset.body || "" : "";
+            body.value = text;
+            if (!text) { preview.hidden = true; return; }
+            const values = params.value.split("\n").map((line) => line.trim()).filter(Boolean);
+            preview.querySelector("p").textContent = text.replace(/\{\{\s*(\d+)\s*\}\}/g, (match, n) => values[n - 1] || match);
+            preview.hidden = false;
+        };
+        if (select) {
+            select.addEventListener("change", () => {
+                const option = select.selectedOptions[0];
+                name.value = option.value;
+                language.value = option.dataset.language || "pt_BR";
+                const count = Number(option.dataset.variables || 0);
+                paramsField.hidden = count === 0;
+                params.required = count > 0;
+                help.textContent = count === 1 ? "Este modelo tem 1 variável: escreva o valor de {{1}}." : `Este modelo tem ${count} variáveis: uma por linha, na ordem ({{1}}, {{2}}…).`;
+                render();
+            });
+        }
+        params.addEventListener("input", render);
+    });
+</script>{% endverbatim %}

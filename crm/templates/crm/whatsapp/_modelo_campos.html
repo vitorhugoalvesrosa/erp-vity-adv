@@ -1,0 +1,37 @@
+<div class="wa-template" data-template-picker>
+    {% if modelos %}
+        <div class="form-field">
+            <label for="wa-template-select">Modelo aprovado</label>
+            <select class="form-select" id="wa-template-select" data-template-select required>
+                <option value="">Escolha um modelo…</option>
+                {% for item in modelos %}
+                    <option value="{{ item.name }}" data-language="{{ item.language }}" data-body="{{ item.body }}" data-variables="{{ item.variables }}">{{ item.name }} · {{ item.language }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <input type="hidden" name="modelo" data-template-name>
+        <input type="hidden" name="idioma" value="pt_BR" data-template-language>
+    {% else %}
+        <div class="form-grid">
+            <div class="form-field">
+                <label for="{{ modelo_form.modelo.id_for_label }}">{{ modelo_form.modelo.label }}</label>
+                {{ modelo_form.modelo }}
+                <span class="helptext">Nome do modelo aprovado no WhatsApp Manager.</span>
+            </div>
+            <div class="form-field">
+                <label for="{{ modelo_form.idioma.id_for_label }}">{{ modelo_form.idioma.label }}</label>
+                {{ modelo_form.idioma }}
+            </div>
+        </div>
+    {% endif %}
+    <input type="hidden" name="corpo" data-template-body>
+    <div class="form-field" data-template-params{% if modelos %} hidden{% endif %}>
+        <label for="{{ modelo_form.parametros.id_for_label }}">{{ modelo_form.parametros.label }}</label>
+        {{ modelo_form.parametros }}
+        <span class="helptext" data-template-help>{{ modelo_form.parametros.help_text }}</span>
+    </div>
+    <div class="wa-template-preview" data-template-preview hidden>
+        <span>Prévia</span>
+        <p></p>
+    </div>
+</div>

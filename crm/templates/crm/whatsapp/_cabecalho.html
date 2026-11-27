@@ -1,0 +1,35 @@
+<div class="wa-chat-header">
+    <a class="wa-back icon-button" href="{% url 'whatsapp-inbox' %}" aria-label="Voltar para a lista de conversas">
+        <svg class="icon" aria-hidden="true"><use href="#icon-chevron-right"></use></svg>
+    </a>
+    <span class="wa-avatar" aria-hidden="true">{{ conversa.nome_exibicao|slice:":1"|upper }}</span>
+    <div class="wa-chat-title">
+        <strong>{{ conversa.nome_exibicao }}</strong>
+        <span>
+            <span class="num">{{ telefone_formatado }}</span>
+            {% if perms.crm.change_conta %} · <a class="text-link" href="{% url 'record-edit' module='contas' pk=conversa.conta_id %}">Ficha no CRM</a>{% endif %}
+        </span>
+    </div>
+    <div class="wa-chat-state">
+        {% if conversa.status == "encerrada" %}<span class="badge badge-neutral">Encerrada</span>
+        {% elif conversa.bot_ativo %}<span class="badge badge-info">Bot respondendo</span>
+        {% elif conversa.status == "aguardando_vendedor" %}<span class="badge badge-warning">Aguardando equipe</span>
+        {% else %}<span class="badge badge-success">Com a equipe</span>{% endif %}
+        {% if conversa.atendente %}<span class="wa-agent">Atendente: {{ conversa.atendente.get_full_name|default:conversa.atendente.username }}</span>{% endif %}
+    </div>
+    {% if pode_atender %}
+        <form class="wa-chat-actions" method="post" action="{% url 'whatsapp-acao' pk=conversa.pk %}">
+            {% csrf_token %}
+            {% if conversa.status == "encerrada" %}
+                <button class="button button-secondary" type="submit" name="action" value="reabrir">Reabrir</button>
+            {% else %}
+                {% if conversa.bot_ativo %}
+                    <button class="button button-secondary" type="submit" name="action" value="assumir">Assumir conversa</button>
+                {% else %}
+                    <button class="button button-secondary" type="submit" name="action" value="devolver_bot">Devolver ao bot</button>
+                {% endif %}
+                <button class="button button-secondary" type="submit" name="action" value="encerrar">Encerrar</button>
+            {% endif %}
+        </form>
+    {% endif %}
+</div>
